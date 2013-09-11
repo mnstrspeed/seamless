@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -25,6 +26,9 @@ public class InstanceServer
 	private ServerSocket externalServerSocket;
 	private ServerSocket internalServerSocket;
 	
+	private InternalInstancePacketReceiver internalReceiver;
+	private ExternalInstancePacketReceiver externalReceiver;
+	
 	// For single instance
 	private InstanceSyncPacket instance;
 	private InstancePacketConnection internalConnection;
@@ -33,6 +37,9 @@ public class InstanceServer
 	public InstanceServer()
 	{
 		this.externalConnections = new ArrayList<InstancePacketConnection>();
+		
+		this.internalReceiver = new InternalInstancePacketReceiver();
+		this.externalReceiver = new ExternalInstancePacketReceiver();
 	}
 	
 	public void start() throws IOException
@@ -118,27 +125,7 @@ public class InstanceServer
 				
 			// Listen for future updates
 			this.internalConnection = connection;
-			this.internalConnection.receiveAsync(new InstancePacketReceiver()
-			{
-				@Override
-				public void receivePacket(InstancePacket packet,
-						InstancePacketConnection connection) 
-				{
-					Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
-						" for " + packet.getPackageName());
-					InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-					
-					InstanceServer.this.instance = syncPacket;
-					try
-					{
-						InstanceServer.this.updateExternalConnections();
-					}
-					catch (IOException ex)
-					{
-						throw new RuntimeException("Invalid update from client");
-					}
-				}
-			}, true);
+			this.internalConnection.receiveAsync(this.internalReceiver, true);
 		}
 		else
 		{
@@ -169,6 +156,8 @@ public class InstanceServer
 		}
 		else if (request.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
+			//this.externalReceiver.receivePacket(request, connection);
+			
 			// TODO: DUPLICATE CODE [A]
 			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
 					" for " + request.getPackageName());
@@ -178,7 +167,6 @@ public class InstanceServer
 			try
 			{
 				this.updateInternalConnection();
-				//this.updateExternalConnections(connection);
 			}
 			catch (IOException ex)
 			{
@@ -186,30 +174,59 @@ public class InstanceServer
 			}
 		}
 		
-		connection.receiveAsync(new InstancePacketReceiver()
-		{
-			@Override
-			public void receivePacket(InstancePacket packet,
-					InstancePacketConnection connection) 
-			{
-				// TODO: DUPLICATE CODE [A]
-				Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
-					" for " + packet.getPackageName());
-				InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-				
-				InstanceServer.this.instance = syncPacket;
-				try
-				{
-					InstanceServer.this.updateInternalConnection();
-					//InstanceServer.this.updateExternalConnections(connection);
-				}
-				catch (IOException ex)
-				{
-					throw new RuntimeException("Invalid update from client");
-				}
-			}
-		}, true);
+		this.registerExternalConnection(connection);
+	}
+
+	private void registerExternalConnection(InstancePacketConnection connection) 
+			throws IOException 
+	{
+		connection.receiveAsync(this.externalReceiver, true);
 		this.externalConnections.add(connection);
+	}
+	
+	private class InternalInstancePacketReceiver implements InstancePacketReceiver 
+	{
+		@Override
+		public void receivePacket(InstancePacket packet,
+				InstancePacketConnection connection) 
+		{
+			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
+				" for " + packet.getPackageName());
+			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+			
+			InstanceServer.this.instance = syncPacket;
+			try
+			{
+				InstanceServer.this.updateExternalConnections();
+			}
+			catch (IOException ex)
+			{
+				throw new RuntimeException("Invalid update from client");
+			}
+		}
+	}
+	
+	public class ExternalInstancePacketReceiver implements InstancePacketReceiver
+	{
+		@Override
+		public void receivePacket(InstancePacket packet,
+				InstancePacketConnection connection) 
+		{
+			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
+				" for " + packet.getPackageName());
+			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+			
+			InstanceServer.this.instance = syncPacket;
+			try
+			{
+				InstanceServer.this.updateInternalConnection();
+				//InstanceServer.this.updateExternalConnections(connection);
+			}
+			catch (IOException ex)
+			{
+				throw new RuntimeException("Invalid update from client");
+			}
+		}
 	}
 	
 	private void updateInternalConnection() throws IOException 
@@ -237,33 +254,18 @@ public class InstanceServer
 			}
 		}
 	}
-	
-	private void updateExternalConnections(InstancePacketConnection source) throws IOException 
-	{
-		Iterator<InstancePacketConnection> iterator = this.externalConnections.iterator();
-		while (iterator.hasNext())
-		{
-			InstancePacketConnection connection = iterator.next();
-			if (connection != source)
-			{
-				if (!connection.getSocket().isClosed())
-				{
-					connection.send(this.instance);
-				}
-				else
-				{
-					Log.w("Connection to " + connection.getSocket().getInetAddress() + " was lost");
-					iterator.remove();
-				}
-			}
-		}
-	}
 
 	public static void main(String[] args)
 	{
 		try 
-		{
-			new InstanceServer().start();
+		{	
+			InstancePacketConnection testConnection = new InstancePacketConnection(
+					new Socket("192.168.0.101", EXTERNAL_PORT));
+			Log.v("Connected to test server at 192.168.0.101; starting InstanceServer");
+			
+			final InstanceServer server = new InstanceServer();
+			server.registerExternalConnection(testConnection);
+			server.start();
 		} 
 		catch (IOException e) 
 		{
