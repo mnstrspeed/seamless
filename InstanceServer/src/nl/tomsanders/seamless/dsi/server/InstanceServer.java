@@ -5,6 +5,7 @@ import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
@@ -70,7 +71,7 @@ public class InstanceServer
 			@Override
 			public void run() 
 			{
-				Log.v("Now listening for external connections at port " + LOCAL_PORT);
+				Log.v("Now listening for external connections on port " + LOCAL_PORT);
 				while (!externalServerSocket.isClosed())
 				{
 					try
@@ -105,6 +106,9 @@ public class InstanceServer
 				// Should only happen on first time run
 				Log.v(socket.getInetAddress() + " requested unknown instance " + request.getPackageName());
 				connection.send(new UnknownInstanceResponsePacket(request));
+				
+				// Client will now create a new instance and send it to
+				// us in an InstanceSyncPacket
 			}
 			else
 			{
@@ -165,6 +169,7 @@ public class InstanceServer
 		}
 		else if (request.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
+			// TODO: DUPLICATE CODE [A]
 			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
 					" for " + request.getPackageName());
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)request;
@@ -172,7 +177,8 @@ public class InstanceServer
 			this.instance = syncPacket;
 			try
 			{
-				this.updateExternalConnections();
+				this.updateInternalConnection();
+				//this.updateExternalConnections(connection);
 			}
 			catch (IOException ex)
 			{
@@ -186,6 +192,7 @@ public class InstanceServer
 			public void receivePacket(InstancePacket packet,
 					InstancePacketConnection connection) 
 			{
+				// TODO: DUPLICATE CODE [A]
 				Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
 					" for " + packet.getPackageName());
 				InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
@@ -193,7 +200,8 @@ public class InstanceServer
 				InstanceServer.this.instance = syncPacket;
 				try
 				{
-					InstanceServer.this.updateExternalConnections(connection);
+					InstanceServer.this.updateInternalConnection();
+					//InstanceServer.this.updateExternalConnections(connection);
 				}
 				catch (IOException ex)
 				{
@@ -204,21 +212,49 @@ public class InstanceServer
 		this.externalConnections.add(connection);
 	}
 	
+	private void updateInternalConnection() throws IOException 
+	{
+		if (this.internalConnection != null)
+		{
+			this.internalConnection.send(this.instance);
+		}
+	}
+
 	private void updateExternalConnections() throws IOException 
 	{
-		for (InstancePacketConnection connection : this.externalConnections)
+		Iterator<InstancePacketConnection> iterator = this.externalConnections.iterator();
+		while (iterator.hasNext())
 		{
-			connection.send(this.instance);
+			InstancePacketConnection connection = iterator.next();
+			if (!connection.getSocket().isClosed())
+			{
+				connection.send(this.instance);
+			}
+			else
+			{
+				Log.w("Connection to " + connection.getSocket().getInetAddress() + " was lost");
+				iterator.remove();
+			}
 		}
 	}
 	
 	private void updateExternalConnections(InstancePacketConnection source) throws IOException 
 	{
-		for (InstancePacketConnection connection : this.externalConnections)
+		Iterator<InstancePacketConnection> iterator = this.externalConnections.iterator();
+		while (iterator.hasNext())
 		{
+			InstancePacketConnection connection = iterator.next();
 			if (connection != source)
 			{
-				connection.send(this.instance);
+				if (!connection.getSocket().isClosed())
+				{
+					connection.send(this.instance);
+				}
+				else
+				{
+					Log.w("Connection to " + connection.getSocket().getInetAddress() + " was lost");
+					iterator.remove();
+				}
 			}
 		}
 	}
