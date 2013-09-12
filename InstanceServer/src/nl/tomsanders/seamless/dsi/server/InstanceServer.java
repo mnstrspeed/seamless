@@ -5,7 +5,6 @@ import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -73,6 +72,8 @@ public class InstanceServer
 			}	
 		}).start();
 		
+		this.discoveryService = new InstanceServerDiscoveryService(this);
+		
 		// Start listening for external connections
 		this.externalServerSocket = new ServerSocket(EXTERNAL_PORT);
 		new Thread(new Runnable()
@@ -81,6 +82,9 @@ public class InstanceServer
 			public void run() 
 			{
 				Log.v("Now listening for external connections on port " + LOCAL_PORT);
+				Log.v("Sending discovery broadcast on local network");
+				InstanceServer.this.discoveryService.sendBroadcast();
+				
 				while (!externalServerSocket.isClosed())
 				{
 					try
@@ -99,9 +103,6 @@ public class InstanceServer
 			}	
 		}).start();
 		
-		this.discoveryService = new InstanceServerDiscoveryService(this);
-		Log.v("Sending discovery broadcast on local network");
-		this.discoveryService.sendBroadcast();
 		Log.v("Listening for discovery broadcasts on local network");
 		this.discoveryService.startListening();
 	}
