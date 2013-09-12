@@ -1,6 +1,7 @@
 package nl.tomsanders.seamless.dsi.server;
 
 import java.io.IOException;
+import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -28,6 +29,7 @@ public class InstanceServer
 	
 	private InternalInstancePacketReceiver internalReceiver;
 	private ExternalInstancePacketReceiver externalReceiver;
+	private InstanceServerDiscoveryService discoveryService;
 	
 	// For single instance
 	private InstanceSyncPacket instance;
@@ -97,8 +99,30 @@ public class InstanceServer
 			}	
 		}).start();
 		
-		// TODO: Broadcast running instances? Other instance servers HAVE to know
-		// what's running on the network
+		this.discoveryService = new InstanceServerDiscoveryService(this);
+		Log.v("Sending discovery broadcast on local network");
+		this.discoveryService.sendBroadcast();
+		Log.v("Listening for discovery broadcasts on local network");
+		this.discoveryService.startListening();
+	}
+	
+	public void registerNewInstanceServer(InetAddress address)
+	{
+		Log.v("Received discovery broadcast");
+		
+		try 
+		{
+			Socket socket = new Socket(address, EXTERNAL_PORT);
+			InstancePacketConnection connection = new InstancePacketConnection(socket);
+			
+			this.updateExternalConnection(connection);
+			this.registerExternalConnection(connection);
+		} 
+		catch (Exception e)
+		{
+			Log.e("Failed to initiate connection with new InstanceServer: " +
+					e.getMessage());
+		}
 	}
 	
 	protected void handleInternalConnection(Socket socket) throws IOException, ClassNotFoundException 
@@ -156,22 +180,7 @@ public class InstanceServer
 		}
 		else if (request.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
-			//this.externalReceiver.receivePacket(request, connection);
-			
-			// TODO: DUPLICATE CODE [A]
-			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
-					" for " + request.getPackageName());
-			InstanceSyncPacket syncPacket = (InstanceSyncPacket)request;
-			
-			this.instance = syncPacket;
-			try
-			{
-				this.updateInternalConnection();
-			}
-			catch (IOException ex)
-			{
-				throw new RuntimeException("Invalid update from client");
-			}
+			this.externalReceiver.receivePacket(request, connection);
 		}
 		
 		this.registerExternalConnection(connection);
@@ -206,7 +215,7 @@ public class InstanceServer
 		}
 	}
 	
-	public class ExternalInstancePacketReceiver implements InstancePacketReceiver
+	private class ExternalInstancePacketReceiver implements InstancePacketReceiver
 	{
 		@Override
 		public void receivePacket(InstancePacket packet,
@@ -229,11 +238,17 @@ public class InstanceServer
 		}
 	}
 	
-	private void updateInternalConnection() throws IOException 
+	private boolean updateInternalConnection() throws IOException 
 	{
-		if (this.internalConnection != null)
+		if (this.internalConnection != null && 
+				!this.internalConnection.getSocket().isClosed())
 		{
 			this.internalConnection.send(this.instance);
+			return true;
+		}
+		else
+		{
+			return false;
 		}
 	}
 
@@ -243,15 +258,26 @@ public class InstanceServer
 		while (iterator.hasNext())
 		{
 			InstancePacketConnection connection = iterator.next();
-			if (!connection.getSocket().isClosed())
-			{
-				connection.send(this.instance);
-			}
-			else
+			if (!this.updateExternalConnection(connection))
 			{
 				Log.w("Connection to " + connection.getSocket().getInetAddress() + " was lost");
 				iterator.remove();
 			}
+		}
+	}
+	
+	private boolean updateExternalConnection(InstancePacketConnection connection) 
+			throws IOException
+	{
+		if (connection != null && 
+				!connection.getSocket().isClosed())
+		{
+			connection.send(this.instance);
+			return true;
+		}
+		else
+		{
+			return false;
 		}
 	}
 
@@ -259,13 +285,7 @@ public class InstanceServer
 	{
 		try 
 		{	
-			InstancePacketConnection testConnection = new InstancePacketConnection(
-					new Socket("192.168.0.101", EXTERNAL_PORT));
-			Log.v("Connected to test server at 192.168.0.101; starting InstanceServer");
-			
-			final InstanceServer server = new InstanceServer();
-			server.registerExternalConnection(testConnection);
-			server.start();
+			new InstanceServer().start();
 		} 
 		catch (IOException e) 
 		{
