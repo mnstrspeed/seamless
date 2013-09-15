@@ -161,36 +161,14 @@ public class InstanceServer
 	protected void handleExternalConnection(Socket socket) throws IOException, ClassNotFoundException
 	{
 		InstancePacketConnection connection = new InstancePacketConnection(socket);
-		InstancePacket request = connection.receive();
-		
-		if (request.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
-		{
-			// Someone heard 'bout our instance and wants in!
-			if (this.instance == null)
-			{
-				// Should only happen on first time run
-				Log.v(socket.getInetAddress() + " requested unknown instance " + request.getPackageName());
-				connection.send(new UnknownInstanceResponsePacket(request));
-			}
-			else
-			{
-				Log.v(socket.getInetAddress() + " requested instance " + request.getPackageName());
-				connection.send(this.instance);
-			}
-		}
-		else if (request.getPacketType() == InstancePacketType.INSTANCE_SYNC)
-		{
-			this.externalReceiver.receivePacket(request, connection);
-		}
-		
 		this.registerExternalConnection(connection);
 	}
 
 	private void registerExternalConnection(InstancePacketConnection connection) 
 			throws IOException 
 	{
-		connection.receiveAsync(this.externalReceiver, true);
 		this.externalConnections.add(connection);
+		connection.receiveAsync(this.externalReceiver, true);
 	}
 	
 	private class InternalInstancePacketReceiver implements InstancePacketReceiver 
@@ -199,8 +177,8 @@ public class InstanceServer
 		public void receivePacket(InstancePacket packet,
 				InstancePacketConnection connection) 
 		{
-			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
-				" for " + packet.getPackageName());
+			Log.v(connection.getSocket().getInetAddress() + 
+				" updated " + packet.getPackageName());
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
 			
 			InstanceServer.this.instance = syncPacket;
@@ -221,19 +199,47 @@ public class InstanceServer
 		public void receivePacket(InstancePacket packet,
 				InstancePacketConnection connection) 
 		{
-			Log.v("Received instance update from " + connection.getSocket().getInetAddress() + 
-				" for " + packet.getPackageName());
-			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-			
-			InstanceServer.this.instance = syncPacket;
 			try
 			{
-				InstanceServer.this.updateInternalConnection();
-				//InstanceServer.this.updateExternalConnections(connection);
+				if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
+				{
+					// Someone heard 'bout our instance and wants in!
+					if (InstanceServer.this.instance == null)
+					{
+						// Should only happen on first time run
+						Log.v(connection.getSocket().getInetAddress() + " requested unknown instance " 
+								+ packet.getPackageName());
+						connection.send(new UnknownInstanceResponsePacket(packet));
+					}
+					else
+					{
+						Log.v(connection.getSocket().getInetAddress() + " requested " 
+								+ packet.getPackageName());
+						connection.send(InstanceServer.this.instance);
+					}
+				}
+				else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
+				{
+					Log.v(connection.getSocket().getInetAddress() + 
+							" updated " + packet.getPackageName());
+					
+					InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+					InstanceServer.this.instance = syncPacket;
+					try
+					{
+						InstanceServer.this.updateInternalConnection();
+						//InstanceServer.this.updateExternalConnections(connection);
+					}
+					catch (IOException ex)
+					{
+						throw new RuntimeException("Invalid update from client");
+					}
+				}
 			}
-			catch (IOException ex)
+			catch (Exception ex)
 			{
-				throw new RuntimeException("Invalid update from client");
+				Log.e("Failed to process packet from " + connection.getSocket().getInetAddress() + ": " +
+						ex.getMessage());
 			}
 		}
 	}
