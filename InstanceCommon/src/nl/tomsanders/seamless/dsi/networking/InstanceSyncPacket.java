@@ -15,7 +15,7 @@ public class InstanceSyncPacket extends InstancePacket
 	
 	public InstanceSyncPacket(Serializable instance) throws IOException
 	{
-		super(InstancePacketType.INSTANCE_SYNC, instance.getClass().getPackage().getName());
+		super(InstancePacketType.INSTANCE_SYNC, instance.getClass());
 		
 		this.time = System.currentTimeMillis();
 		this.instance = new InstanceData(instance);
