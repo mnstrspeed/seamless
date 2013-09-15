@@ -273,7 +273,10 @@ public class InstanceServer
 		if (connection != null && 
 				!connection.getSocket().isClosed())
 		{
-			connection.send(this.instance);
+			if (this.instance != null)
+			{
+				connection.send(this.instance);
+			}
 			return true;
 		}
 		else
