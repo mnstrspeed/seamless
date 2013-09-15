@@ -21,17 +21,25 @@ public class InstanceSyncPacket extends InstancePacket
 		this.instance = new InstanceData(instance);
 	}
 	
-	public InstanceSyncPacket(String packageName, long time, InstanceData instance) 
+	public InstanceSyncPacket(Serializable instance, String identifier) throws IOException
 	{
-		super(InstancePacketType.INSTANCE_SYNC, packageName);
+		super(InstancePacketType.INSTANCE_SYNC, instance.getClass(), identifier);
 		
-		this.time= time;
-		this.instance = instance;
+		this.time = System.currentTimeMillis();
+		this.instance = new InstanceData(instance);
 	}
 	
 	public InstanceSyncPacket(Class<?> type, long time, InstanceData instance)
 	{
 		super(InstancePacketType.INSTANCE_SYNC, type);
+		
+		this.time= time;
+		this.instance = instance;
+	}
+	
+	public InstanceSyncPacket(Class<?> type, String identifier, long time, InstanceData instance)
+	{
+		super(InstancePacketType.INSTANCE_SYNC, type, identifier);
 		
 		this.time= time;
 		this.instance = instance;

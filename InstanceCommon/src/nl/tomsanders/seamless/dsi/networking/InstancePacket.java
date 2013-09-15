@@ -11,18 +11,23 @@ public abstract class InstancePacket implements Serializable
 	private final InstancePacketType packetType;
 	private final String instanceIdentifier;
 	
-	protected InstancePacket(InstancePacketType packetType, String instanceIdentifier)
-	{
-		this.packetType = packetType;
-		this.instanceIdentifier = instanceIdentifier;
-	}
-	
 	protected InstancePacket(InstancePacketType packetType, Class<?> type)
 	{
 		this.packetType = packetType;
 		this.instanceIdentifier = type.getCanonicalName();
 	}
 	
+	protected InstancePacket(InstancePacketType packetType, Class<?> type, String identifier)
+	{
+		this.packetType = packetType;
+		this.instanceIdentifier = type.getCanonicalName() + "#" + identifier;
+	}
+	
+	public InstancePacket(InstancePacketType packetType, InstancePacket request) {
+		this.packetType = packetType;
+		this.instanceIdentifier = request.getInstanceIdentifier();
+	}
+
 	public InstancePacketType getPacketType()
 	{
 		return this.packetType;

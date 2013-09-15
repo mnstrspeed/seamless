@@ -86,9 +86,13 @@ public class InstancePacketConnection implements Closeable
 				}
 				while (this.repeat);
 			} 
-			catch (IOException | ClassNotFoundException e) 
+			catch (IOException e)
 			{
-				Log.e("Stopped listening for packets from " + connection.getInetAddress());
+				Log.e("Connection to " + connection.getInetAddress() + " interrupted");
+			}
+			catch (ClassNotFoundException e)
+			{
+				Log.e("Invalid update from " + connection.getInetAddress() + ", terminating connection");
 			} 
 		}
 	}

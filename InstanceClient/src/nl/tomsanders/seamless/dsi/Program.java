@@ -1,33 +1,32 @@
 package nl.tomsanders.seamless.dsi;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
+import java.util.Date;
+
 public class Program
 {	
 	public static void main(String[] args)
-	{
-		/*Reference<Model> model = OldInstanceManager.getInstance(Model.class);
-		
-		Model external = new Model();
-		external.addNote("We do what we must, because we can.");
-		external.addNote("For the good of all of us, except the ones who are dead.");
-		external.addNote("It's hard to overstate my satisfaction.");
-		
-		OldInstanceManager.updateInstance(Model.class, external);
-		
-		for (String str : model.get().getNotes())
-			System.out.println(str);
-		*/
-		
+	{	
 		Reference<Model> model = InstanceManager.getInstance(Model.class);
-		System.out.println("Program.main: Model loaded");
+		model.get().addNote("Note added by " + getLocalHostName() + 
+				" at " + new Date().toString());
 		
-		System.out.println("Program.main: Model contents:");
+		System.out.println("Model now contains: ");
 		for (String note : model.get().getNotes())
 		{
 			System.out.println(note);
 		}
-		
-		System.out.println("Program.main: updating Model");
-		model.get().addNote("For the good of all of us, except the ones who are dead.");
-		System.out.println("Program.main: Model updated");
+	}
+	
+	private static String getLocalHostName() {
+		try
+		{
+			return InetAddress.getLocalHost().getHostName();
+		}
+		catch (UnknownHostException ex)
+		{
+			return "unknown host";
+		}
 	}
 }

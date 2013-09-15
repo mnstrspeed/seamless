@@ -6,14 +6,14 @@ package nl.tomsanders.seamless.dsi.networking;
  */
 @SuppressWarnings("serial")
 public class InstanceRequestPacket extends InstancePacket
-{
-	public InstanceRequestPacket(String packageName) 
-	{
-		super(InstancePacketType.INSTANCE_REQUEST, packageName);
-	}
-	
+{	
 	public InstanceRequestPacket(Class<?> type)
 	{
 		super(InstancePacketType.INSTANCE_REQUEST, type);
+	}
+	
+	public InstanceRequestPacket(Class<?> type, String identifier)
+	{
+		super(InstancePacketType.INSTANCE_REQUEST, type, identifier);
 	}
 }

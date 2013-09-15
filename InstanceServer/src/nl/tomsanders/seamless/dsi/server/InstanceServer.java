@@ -62,7 +62,6 @@ public class InstanceServer
 						Log.v("Incoming internal connection from " + connection.getInetAddress());
 						
 						handleInternalConnection(connection);
-						Log.v("Incoming internal connection from " + connection.getInetAddress() + " was handled");
 					}
 					catch (Exception ex) 
 					{ 
@@ -89,7 +88,6 @@ public class InstanceServer
 						Log.v("Incoming external connection from " + connection.getInetAddress());
 						
 						handleExternalConnection(connection);
-						Log.v("Incoming external connection from " + connection.getInetAddress() + " was handled");
 					}
 					catch (Exception ex) 
 					{ 

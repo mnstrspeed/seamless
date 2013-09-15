@@ -9,7 +9,6 @@ import nl.tomsanders.seamless.dsi.networking.InstancePacketType;
 import nl.tomsanders.seamless.dsi.networking.InstanceRequestPacket;
 import nl.tomsanders.seamless.dsi.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.dsi.networking.InstancePacketConnection;
-import nl.tomsanders.seamless.dsi.networking.InstancePacketReceiver;
 import nl.tomsanders.util.Observable;
 
 public class InstanceManager 
@@ -18,16 +17,6 @@ public class InstanceManager
 	protected static final int LOCAL_PORT = 1901;
 	
 	private static InstancePacketConnection instanceServerConnection;
-	
-	/*protected static InstancePacketConnection getConnection() throws UnknownHostException, IOException
-	{
-		if (instanceServerConnection == null)
-		{
-			Log.v("Initializing connection with instance server");
-			instanceServerConnection = new InstancePacketConnection(new Socket(LOCAL_HOST, LOCAL_PORT));
-		}
-		return instanceServerConnection;
-	}*/
 	
 	public synchronized static <T extends Observable<T>, Serializable> Reference<T> getInstance(Class<T> type)
 	{
