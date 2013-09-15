@@ -135,7 +135,7 @@ public class InstanceServer
 			if (this.instance == null)
 			{
 				// Should only happen on first time run
-				Log.v(socket.getInetAddress() + " requested unknown instance " + request.getPackageName());
+				Log.v(socket.getInetAddress() + " requested unknown instance " + request.getInstanceIdentifier());
 				connection.send(new UnknownInstanceResponsePacket(request));
 				
 				// Client will now create a new instance and send it to
@@ -143,7 +143,7 @@ public class InstanceServer
 			}
 			else
 			{
-				Log.v(socket.getInetAddress() + " requested instance " + request.getPackageName());
+				Log.v(socket.getInetAddress() + " requested instance " + request.getInstanceIdentifier());
 				connection.send(this.instance);
 			}
 				
@@ -178,7 +178,7 @@ public class InstanceServer
 				InstancePacketConnection connection) 
 		{
 			Log.v(connection.getSocket().getInetAddress() + 
-				" updated " + packet.getPackageName());
+				" updated " + packet.getInstanceIdentifier());
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
 			
 			InstanceServer.this.instance = syncPacket;
@@ -208,20 +208,20 @@ public class InstanceServer
 					{
 						// Should only happen on first time run
 						Log.v(connection.getSocket().getInetAddress() + " requested unknown instance " 
-								+ packet.getPackageName());
+								+ packet.getInstanceIdentifier());
 						connection.send(new UnknownInstanceResponsePacket(packet));
 					}
 					else
 					{
 						Log.v(connection.getSocket().getInetAddress() + " requested " 
-								+ packet.getPackageName());
+								+ packet.getInstanceIdentifier());
 						connection.send(InstanceServer.this.instance);
 					}
 				}
 				else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 				{
 					Log.v(connection.getSocket().getInetAddress() + 
-							" updated " + packet.getPackageName());
+							" updated " + packet.getInstanceIdentifier());
 					
 					InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
 					InstanceServer.this.instance = syncPacket;

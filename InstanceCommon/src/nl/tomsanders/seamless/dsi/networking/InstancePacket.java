@@ -9,18 +9,18 @@ import java.io.Serializable;
 public abstract class InstancePacket implements Serializable
 {
 	private final InstancePacketType packetType;
-	private final String packageName;
+	private final String instanceIdentifier;
 	
-	protected InstancePacket(InstancePacketType packetType, String packageName)
+	protected InstancePacket(InstancePacketType packetType, String instanceIdentifier)
 	{
 		this.packetType = packetType;
-		this.packageName = packageName;
+		this.instanceIdentifier = instanceIdentifier;
 	}
 	
 	protected InstancePacket(InstancePacketType packetType, Class<?> type)
 	{
 		this.packetType = packetType;
-		this.packageName = type.getPackage().getName();
+		this.instanceIdentifier = type.getCanonicalName();
 	}
 	
 	public InstancePacketType getPacketType()
@@ -28,8 +28,8 @@ public abstract class InstancePacket implements Serializable
 		return this.packetType;
 	}
 	
-	public String getPackageName()
+	public String getInstanceIdentifier()
 	{
-		return this.packageName;
+		return this.instanceIdentifier;
 	}
 }

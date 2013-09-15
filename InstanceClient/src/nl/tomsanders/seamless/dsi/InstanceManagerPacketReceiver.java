@@ -22,7 +22,7 @@ public class InstanceManagerPacketReceiver<T> implements InstancePacketReceiver
 	{
 		if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
-			Log.v("Received instance update for " + packet.getPackageName() + " from instance server");
+			Log.v("Received instance update for " + packet.getInstanceIdentifier() + " from instance server");
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
 			try 
 			{
