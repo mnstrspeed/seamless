@@ -97,7 +97,7 @@ public class InstanceServer
 					}
 					catch (Exception ex) 
 					{ 
-						Log.e("Exception was thrown while handling internal connection: " + ex);
+						Log.e("Exception was thrown while handling external connection: " + ex);
 					}
 				}
 			}	
