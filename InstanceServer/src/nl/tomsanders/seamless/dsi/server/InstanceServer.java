@@ -191,7 +191,7 @@ public class InstanceServer
 			}
 			catch (IOException ex)
 			{
-				throw new RuntimeException("Invalid update from client");
+				throw new RuntimeException("Invalid update from client: " + ex.getMessage());
 			}
 		}
 	}
