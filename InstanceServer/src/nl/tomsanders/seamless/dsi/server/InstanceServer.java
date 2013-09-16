@@ -30,11 +30,7 @@ public class InstanceServer
 	private InternalInstancePacketReceiver internalReceiver;
 	private ExternalInstancePacketReceiver externalReceiver;
 	private InstanceServerDiscoveryService discoveryService;
-	
-	// For single instance
-	@Deprecated
-	private InstanceSyncPacket instance;
-	
+
 	private Hashtable<String, InstanceSyncPacket> instances;
 	private InstancePacketConnection internalConnection;
 	private List<InstancePacketConnection> externalConnections;
