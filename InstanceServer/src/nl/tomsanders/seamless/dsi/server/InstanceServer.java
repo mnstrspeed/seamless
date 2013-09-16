@@ -283,6 +283,7 @@ public class InstanceServer
 		{
 			if (this.instances.containsKey(instanceIdentifier))
 			{
+				Log.v("Sending " + instanceIdentifier + " to " + connection.getSocket().getInetAddress());
 				connection.send(this.instances.get(instanceIdentifier));
 			}
 			return true;
