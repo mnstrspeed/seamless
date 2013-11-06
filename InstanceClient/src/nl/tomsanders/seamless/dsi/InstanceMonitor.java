@@ -1,5 +1,6 @@
 package nl.tomsanders.seamless.dsi;
 
+import nl.tomsanders.seamless.dsi.logging.Log;
 import nl.tomsanders.util.Observable;
 import nl.tomsanders.util.Observer;
 
@@ -28,7 +29,7 @@ public class InstanceMonitor<T extends Observable<T>> implements Observer<T>
 	
 	private void referenceUpdated()
 	{
-		System.out.println(this.getClass().getName() + "@" + Integer.toHexString(this.hashCode()) + " was re-referenced");
+		Log.v(this.getClass().getName() + "@" + Integer.toHexString(this.hashCode()) + " was re-referenced");
 		
 		// Unregister from old observable, if exists
 		if (this.currentInstance != null)
@@ -45,7 +46,7 @@ public class InstanceMonitor<T extends Observable<T>> implements Observer<T>
 	@Override
 	public void notify(Observable<T> observable, T data)
 	{
-		System.out.println(data.getClass().getName() + "@" + Integer.toHexString(data.hashCode()) + " was modified");
+		Log.v(data.getClass().getName() + "@" + Integer.toHexString(data.hashCode()) + " was modified");
 		InstanceManager.updateInstance(data.getClass(), data);
 	}
 }

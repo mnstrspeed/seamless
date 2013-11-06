@@ -97,4 +97,9 @@ public class InstanceManager
 			throw new RuntimeException("Failed to update instance", ex);
 		}
 	}
+	
+	public synchronized static <T extends Observable<T>, Serializable> void releaseInstance(Reference<T> instance)
+	{
+		
+	}
 }

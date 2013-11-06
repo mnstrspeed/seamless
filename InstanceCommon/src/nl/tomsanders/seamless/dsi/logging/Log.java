@@ -5,6 +5,7 @@ import java.util.Date;
 
 public class Log 
 {
+	public static LogLevel LEVEL = LogLevel.ERROR;
 	private static SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 	
 	public static void v(Object message)
@@ -24,6 +25,9 @@ public class Log
 	
 	public static void addMessage(LogLevel level, Object message)
 	{
-		System.out.println(dateFormat.format(new Date()) + " - " + message.toString());
+		if (level.ordinal() >= Log.LEVEL.ordinal())
+		{
+			System.out.println(dateFormat.format(new Date()) + " - " + message.toString());
+		}
 	}
 }
