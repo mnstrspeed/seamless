@@ -1,4 +1,3 @@
-
 package nl.tomsanders.seamless.packagemanager;
 
 import java.io.File;
@@ -129,14 +128,7 @@ public class PackageManager
 					for (Package p : indexPacket.getPackages())
 					{
 						if (packageWanted(p))
-						{
-							p.setIsLatestVersion(true);
-							for (Package other : packageIndex)
-							{
-								if (p.getName() == other.getName())
-									other.setIsLatestVersion(false);
-							}
-							
+						
 							Log.v("Requesting " + p + " from " + connection.getSocket().getInetAddress());
 							try
 							{
@@ -185,6 +177,13 @@ public class PackageManager
 					{
 						if (packageWanted(packagePacket.getPackage()))
 						{
+							packagePacket.getPackage().setIsLatestVersion(true);
+							for (Package other : packageIndex)
+							{
+								if (packagePacket.getPackage().getName() == other.getName())
+									other.setIsLatestVersion(false);
+							}
+							
 							packageIndex.add(packagePacket.getPackage());
 							savePackage(packagePacket.getPackage(), packagePacket.getData());
 							saveIndex();
