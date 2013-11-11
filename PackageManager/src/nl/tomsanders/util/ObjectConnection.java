@@ -15,6 +15,7 @@ public class ObjectConnection<T extends Serializable>
 	private ObjectInputStream inputStream;
 	
 	private boolean isReceivingAsync = false;
+	private boolean asyncInterrupted = false;
 	private Thread asyncThread;
 	
 	public ObjectConnection(Socket socket) throws IOException
@@ -33,6 +34,11 @@ public class ObjectConnection<T extends Serializable>
 	public void close() throws IOException
 	{
 		this.connection.close();
+	}
+	
+	public boolean isConnected()
+	{
+		return !this.getSocket().isClosed() && !asyncInterrupted;
 	}
 	
 	public void send(T object) throws IOException
@@ -91,10 +97,12 @@ public class ObjectConnection<T extends Serializable>
 			catch (IOException e)
 			{
 				Log.e("Connection to " + connection.getInetAddress() + " interrupted (" + e.getMessage() + ")");
+				asyncInterrupted = true;
 			}
 			catch (ClassNotFoundException e)
 			{
 				Log.e("Invalid update from " + connection.getInetAddress() + ", terminating connection");
+				asyncInterrupted = true;
 			} 
 		}
 	}

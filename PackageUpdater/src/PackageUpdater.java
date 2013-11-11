@@ -12,6 +12,7 @@ public class PackageUpdater
 {
 	public static void main(String[] args)
 	{
+		args = new String[] { "update", "TestPackage", "3", "C:\\Users\\Tom\\Documents\\GitHub\\seamless\\PackageUpdater\\TestPackage.jar" };
 		if (args.length >= 1)
 		{
 			String action = args[0];

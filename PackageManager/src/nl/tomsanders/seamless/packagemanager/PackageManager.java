@@ -12,6 +12,8 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Hashtable;
+import java.util.Iterator;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
 import nl.tomsanders.seamless.dsi.logging.LogLevel;
@@ -25,6 +27,7 @@ public class PackageManager
 	private static final int EXTERNAL_PORT = 1812;
 
 	private ArrayList<Package> packageIndex;
+	private Hashtable<String, Process> runningProcesses;
 	
 	private PackageManagerDiscoveryService discoveryService;
 	private ArrayList<PackageManagerConnection> connections;
@@ -33,6 +36,7 @@ public class PackageManager
 	public PackageManager()
 	{
 		this.connections = new ArrayList<PackageManagerConnection>();
+		this.runningProcesses = new Hashtable<String, Process>();
 	}
 
 	public void start() throws IOException
@@ -128,7 +132,7 @@ public class PackageManager
 					for (Package p : indexPacket.getPackages())
 					{
 						if (packageWanted(p))
-						
+						{
 							Log.v("Requesting " + p + " from " + connection.getSocket().getInetAddress());
 							try
 							{
@@ -177,6 +181,7 @@ public class PackageManager
 					{
 						if (packageWanted(packagePacket.getPackage()))
 						{
+							Log.v("I NEED THIS");
 							packagePacket.getPackage().setIsLatestVersion(true);
 							for (Package other : packageIndex)
 							{
@@ -189,9 +194,23 @@ public class PackageManager
 							saveIndex();
 							
 							// Let the others know we now have a new package!
-							for (PackageManagerConnection other : connections)
+							Iterator<PackageManagerConnection> iterator = connections.iterator();
+							while (iterator.hasNext())
 							{
-								other.send(new PackageIndexPacket(packageIndex));
+								PackageManagerConnection other = iterator.next();
+								if (other != connection && other != null && other.isConnected())
+								{
+									other.send(new PackageIndexPacket(packageIndex));
+								}
+								if (other == connection)
+								{
+									// ignore
+								}
+								else
+								{
+									Log.v("Connection to " + other.getSocket().getInetAddress() + " was lost");
+									iterator.remove();
+								}
 							}
 							
 							launchPackage(packagePacket.getPackage());
@@ -227,7 +246,7 @@ public class PackageManager
 	{
 		for (Package p : this.packageIndex)
 		{
-			if (p.getName() == offered.getName() && p.getVersion() >= offered.getVersion())
+			if (p.getName().equals(offered.getName()) && p.getVersion() >= offered.getVersion())
 				return false;
 		}
 		return true;
@@ -236,10 +255,16 @@ public class PackageManager
 	private void launchPackage(Package pack)
 	{
 		Log.v("Launching package " + pack);
+		if (this.runningProcesses.containsKey(pack.getName()))
+		{
+			this.runningProcesses.get(pack.getName()).destroy();
+		}
+		
 		String path = getPackagePath(pack);
 		try 
 		{
-			Runtime.getRuntime().exec("java -jar " + path);
+			Process p = Runtime.getRuntime().exec("java -jar " + path);
+			this.runningProcesses.put(pack.getName(), p);
 		} 
 		catch (IOException e) 
 		{
