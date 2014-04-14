@@ -19,7 +19,7 @@ public class Program
 		List<String> argumentList = Arrays.asList(args);
 		boolean verbose = argumentList.contains("-v") || argumentList.contains("-verbose") ||
 				argumentList.contains("--v") || argumentList.contains("--verbose");
-		String action = args.length > 0 ? args[0] : "start";
+		String action = args.length > (verbose ? 1 : 0) ? args[0] : "start";
 		
 		if (verbose)
 		{
