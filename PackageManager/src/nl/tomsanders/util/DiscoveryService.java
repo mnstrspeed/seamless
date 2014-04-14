@@ -2,7 +2,9 @@ package nl.tomsanders.util;
 
 import java.net.DatagramPacket;
 import java.net.InetAddress;
+import java.net.NetworkInterface;
 import java.net.SocketException;
+import java.util.Collections;
 
 public class DiscoveryService implements Runnable {
 	public static interface DiscoveryServiceListener {
@@ -26,6 +28,34 @@ public class DiscoveryService implements Runnable {
 		
 		this.running = false;
 		this.multicastClient = new UdpClient();
+	}
+	
+	public void waitForNetwork()
+	{
+		try
+		{
+			boolean multicastInterfaceUp = false;
+			while (!multicastInterfaceUp)
+			{
+				for (NetworkInterface iface : Collections.list(NetworkInterface.getNetworkInterfaces()))
+				{
+					if (iface.isUp() && iface.supportsMulticast())
+					{
+						multicastInterfaceUp = true;
+						break;
+					}
+				}
+				
+				if (!multicastInterfaceUp)
+				{
+					Thread.sleep(100);
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			throw new RuntimeException("Exception while waiting for network", ex);
+		}
 	}
 	
 	public void sendBroadcast()
