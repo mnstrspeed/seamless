@@ -1,12 +1,7 @@
 package nl.tomsanders.seamless.packagemanager;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
-import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -16,22 +11,22 @@ import java.util.Hashtable;
 import java.util.Iterator;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
-import nl.tomsanders.seamless.dsi.logging.LogLevel;
+import nl.tomsanders.util.DiscoveryService;
 import nl.tomsanders.util.ObjectConnection;
 import nl.tomsanders.util.ObjectReceiver;
 
-public class PackageManager 
+public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 {
-	private static final String PACKAGE_DIR = "packages";
-	private static final String INDEX_FILE = "index.dat";
-	private static final int EXTERNAL_PORT = 1812;
-
-	private ArrayList<Package> packageIndex;
-	private Hashtable<String, Process> runningProcesses;
+	private PackageIndex packageIndex;
 	
-	private PackageManagerDiscoveryService discoveryService;
-	private ArrayList<PackageManagerConnection> connections;
+	private static final int DISCOVERY_PORT = 1811;
+	private static final int PACKAGE_MANAGER_PORT = 1812;
+	
+	private DiscoveryService discoveryService;
 	private ServerSocket socket;
+	private ArrayList<PackageManagerConnection> connections;
+	
+	private Hashtable<String, Process> runningProcesses;
 	
 	public PackageManager()
 	{
@@ -41,14 +36,14 @@ public class PackageManager
 
 	public void start() throws IOException
 	{
-		this.loadIndex();
-		for (Package pack : this.packageIndex)
+		this.packageIndex = PackageIndex.load();
+		for (Package pack : this.packageIndex.getPackages())
 		{
 			if (pack.isLatestVersion())
-				launchPackage(pack);
+				this.launchPackage(pack);
 		}
 		
-		this.socket = new ServerSocket(EXTERNAL_PORT);
+		this.socket = new ServerSocket(PACKAGE_MANAGER_PORT);
 		new Thread(new Runnable()
 		{
 			@Override
@@ -66,55 +61,38 @@ public class PackageManager
 					}
 					catch (Exception ex) 
 					{ 
-						Log.e("Exception was thrown while handling connection: " + ex);
+						Log.e("Exception was thrown while handling incoming connection: " + ex);
 					}
 				}
 			}	
 		}).start();
 		
-		this.discoveryService = new PackageManagerDiscoveryService(this);
+		this.discoveryService = new DiscoveryService("Dave?", DISCOVERY_PORT);
 		Log.v("Sending discovery broadcast on local network");
 		this.discoveryService.sendBroadcast();
 		Log.v("Listening for discovery broadcasts on local network");
-		this.discoveryService.startListening();
+		this.discoveryService.startListening(this);
 	}
 	
-	@SuppressWarnings("unchecked")
-	private void loadIndex() throws FileNotFoundException, IOException 
+	public void onHostDiscovered(InetAddress address) 
 	{
-		File indexFile = new File(PACKAGE_DIR + "/" + INDEX_FILE);
-		if (indexFile.isFile())
+		Log.v("Received discovery broadcast from " + address + "; sending package index");
+		
+		try 
 		{
-			Log.v("Loading package index");
-			try
-			{
-				ObjectInputStream deserializer = new ObjectInputStream(
-						new FileInputStream(indexFile));
-				this.packageIndex = (ArrayList<Package>)deserializer.readObject();
-				deserializer.close();
-			}
-			catch (ClassNotFoundException ex)
-			{
-				throw new RuntimeException(ex);
-			}
-		}
-		else
+			Socket socket = new Socket(address, PACKAGE_MANAGER_PORT);
+			PackageManagerConnection connection = new PackageManagerConnection(socket);
+			
+			connection.send(new PackageIndexPacket(this.packageIndex));
+			this.connections.add(connection);
+		} 
+		catch (Exception e)
 		{
-			Log.v("No package index detected; creating new package index");
-			this.packageIndex = new ArrayList<Package>();
-			this.saveIndex();
+			Log.e("Failed to initiate connection with PackageManager at " 
+					+ address + ": " + e.getMessage());
 		}
 	}
 	
-	private void saveIndex() throws FileNotFoundException, IOException
-	{
-		Log.v("Saving package index to disk");
-		ObjectOutputStream serializer = new ObjectOutputStream(
-				new FileOutputStream(PACKAGE_DIR + "/" + INDEX_FILE));
-		serializer.writeObject(this.packageIndex);
-		serializer.close();
-	}
-
 	protected void handleConnection(Socket connection) throws IOException 
 	{
 		PackageManagerConnection c = new PackageManagerConnection(connection);
@@ -152,7 +130,7 @@ public class PackageManager
 					Log.v("Received package request for " + requestPacket.getPackage() + " from " +
 							connection.getSocket().getInetAddress());
 					
-					if (packageIndex.contains(requestPacket.getPackage()))
+					if (packageIndex.containsPackage(requestPacket.getPackage()))
 					{
 						try
 						{
@@ -181,9 +159,8 @@ public class PackageManager
 					{
 						if (packageWanted(packagePacket.getPackage()))
 						{
-							Log.v("I NEED THIS");
 							packagePacket.getPackage().setIsLatestVersion(true);
-							for (Package other : packageIndex)
+							for (Package other : packageIndex.getPackages())
 							{
 								if (packagePacket.getPackage().getName() == other.getName())
 									other.setIsLatestVersion(false);
@@ -191,25 +168,24 @@ public class PackageManager
 							
 							packageIndex.add(packagePacket.getPackage());
 							savePackage(packagePacket.getPackage(), packagePacket.getData());
-							saveIndex();
+							packageIndex.save();
 							
 							// Let the others know we now have a new package!
 							Iterator<PackageManagerConnection> iterator = connections.iterator();
 							while (iterator.hasNext())
 							{
 								PackageManagerConnection other = iterator.next();
-								if (other != connection && other != null && other.isConnected())
+								if (other == null)
+								{
+									iterator.remove();
+								}
+								else if (other == connection) 
+								{
+									continue;
+								}
+								else if (other.isConnected())
 								{
 									other.send(new PackageIndexPacket(packageIndex));
-								}
-								if (other == connection)
-								{
-									// ignore
-								}
-								else
-								{
-									Log.v("Connection to " + other.getSocket().getInetAddress() + " was lost");
-									iterator.remove();
 								}
 							}
 							
@@ -239,12 +215,12 @@ public class PackageManager
 
 	private static String getPackagePath(Package pack)
 	{
-		return PACKAGE_DIR + "/" + pack.getName() + "-" + pack.getVersion() + ".jar";
+		return PackageIndex.getPackageDir() + "/" + pack.getName() + "-" + pack.getVersion() + ".jar";
 	}
 	
 	private boolean packageWanted(Package offered)
 	{
-		for (Package p : this.packageIndex)
+		for (Package p : this.packageIndex.getPackages())
 		{
 			if (p.getName().equals(offered.getName()) && p.getVersion() >= offered.getVersion())
 				return false;
@@ -269,38 +245,6 @@ public class PackageManager
 		catch (IOException e) 
 		{
 			Log.e("Unable to launch package " + pack);
-		}
-	}
-
-	public void registerNewPackageManager(InetAddress address) 
-	{
-		Log.v("Received package manager discovery broadcast; sending package index");
-		
-		try 
-		{
-			Socket socket = new Socket(address, EXTERNAL_PORT);
-			PackageManagerConnection connection = new PackageManagerConnection(socket);
-			
-			connection.send(new PackageIndexPacket(this.packageIndex));
-			this.connections.add(connection);
-		} 
-		catch (Exception e)
-		{
-			Log.e("Failed to initiate connection with new PackageManager: " +
-					e.getMessage());
-		}
-	}
-	
-	public static void main(String[] args)
-	{
-		Log.LEVEL = LogLevel.VERBOSE;
-		try
-		{
-			new PackageManager().start();
-		}
-		catch (Exception ex)
-		{
-			ex.printStackTrace();
 		}
 	}
 }

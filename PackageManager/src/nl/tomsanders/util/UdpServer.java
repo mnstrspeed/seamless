@@ -24,6 +24,7 @@ public class UdpServer implements Closeable
 				receiveData, receiveData.length);
 		
 		socket.receive(packet);
+		
 		return packet;
 	}
 	

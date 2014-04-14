@@ -15,7 +15,7 @@ public class ObjectConnection<T extends Serializable>
 	private ObjectInputStream inputStream;
 	
 	private boolean isReceivingAsync = false;
-	private boolean asyncInterrupted = false;
+	private boolean isInterrupted = false;
 	private Thread asyncThread;
 	
 	public ObjectConnection(Socket socket) throws IOException
@@ -38,7 +38,7 @@ public class ObjectConnection<T extends Serializable>
 	
 	public boolean isConnected()
 	{
-		return !this.getSocket().isClosed() && !asyncInterrupted;
+		return !this.getSocket().isClosed() && !isInterrupted;
 	}
 	
 	public void send(T object) throws IOException
@@ -48,7 +48,7 @@ public class ObjectConnection<T extends Serializable>
 	}
 	
 	@SuppressWarnings("unchecked")
-	public T receive() throws ClassNotFoundException, IOException
+	public T receive()
 	{
 		if (this.isReceivingAsync)
 		{
@@ -56,7 +56,24 @@ public class ObjectConnection<T extends Serializable>
 					+ "while receiving asynchronously");
 		}
 		
-		return (T)this.inputStream.readObject();
+		try 
+		{
+			return (T)this.inputStream.readObject();
+		}
+		catch (IOException e)
+		{
+			Log.e("Connection to " + connection.getInetAddress() + " interrupted (" + e.getMessage() + ")");
+			this.isInterrupted = true;
+			
+			throw new RuntimeException(e);
+		}
+		catch (ClassNotFoundException e)
+		{
+			Log.e("Invalid update from " + connection.getInetAddress() + ", terminating connection");
+			this.isInterrupted = true;
+			
+			throw new RuntimeException(e);
+		}
 	}
 	
 	public void receiveAsync(ObjectReceiver<T> receiver, boolean repeat) throws IOException
@@ -65,6 +82,12 @@ public class ObjectConnection<T extends Serializable>
 		
 		this.asyncThread = new Thread(new AsyncReceiver(this.inputStream, receiver, repeat));
 		this.asyncThread.start();
+	}
+	
+	public void interrupt() {
+		if (this.isReceivingAsync) {
+			this.asyncThread.interrupt();
+		}
 	}
 	
 	private class AsyncReceiver implements Runnable
@@ -91,19 +114,25 @@ public class ObjectConnection<T extends Serializable>
 					@SuppressWarnings("unchecked")
 					T packet = (T)this.stream.readObject();
 					this.receiver.receivePacket(packet, ObjectConnection.this);
+					
+					// TODO: untested
+					if (Thread.interrupted()) {
+						Log.v("Aborted receiving from " + connection.getInetAddress());
+						this.repeat = false;
+					}
 				}
 				while (this.repeat);
 			} 
 			catch (IOException e)
 			{
 				Log.e("Connection to " + connection.getInetAddress() + " interrupted (" + e.getMessage() + ")");
-				asyncInterrupted = true;
+				isInterrupted = true;
 			}
 			catch (ClassNotFoundException e)
 			{
 				Log.e("Invalid update from " + connection.getInetAddress() + ", terminating connection");
-				asyncInterrupted = true;
-			} 
+				isInterrupted = true;
+			}
 		}
 	}
 }

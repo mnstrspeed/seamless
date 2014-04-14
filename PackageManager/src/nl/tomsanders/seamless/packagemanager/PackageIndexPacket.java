@@ -6,16 +6,16 @@ import java.util.List;
 @SuppressWarnings("serial")
 public class PackageIndexPacket extends PackageManagerPacket
 {
-	private ArrayList<Package> packages;
+	private PackageIndex packageIndex;
 	
-	public PackageIndexPacket(ArrayList<Package> packages) 
+	public PackageIndexPacket(PackageIndex packageIndex) 
 	{
 		super(PacketManagerPacketType.INDEX);
-		this.packages = packages;
+		this.packageIndex = packageIndex;
 	}
 	
 	public List<Package> getPackages()
 	{
-		return this.packages;
+		return this.packageIndex.getPackages();
 	}
 }
