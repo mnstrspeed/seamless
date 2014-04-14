@@ -36,6 +36,8 @@ public class DiscoveryService implements Runnable {
 		} 
 		catch (Exception ex)
 		{
+			// TODO: we probably want to keep sending this until it's gone
+			// through (network might take a while to be up)
 			throw new RuntimeException("Unable to send discovery broadcast", ex);
 		}
 	}
