@@ -14,7 +14,7 @@ import nl.tomsanders.seamless.dsi.logging.Log;
 public class PackageIndex 
 {
 	private static final String PACKAGE_DIR = "packages";
-	private static final String INDEX_FILE = "index.dat";
+	private static final String INDEX_FILE = ".index";
 	
 	private ArrayList<Package> packages;
 	
