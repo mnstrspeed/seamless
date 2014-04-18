@@ -4,48 +4,25 @@ import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Paths;
-import java.util.Arrays;
-import java.util.List;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
 import nl.tomsanders.seamless.dsi.logging.LogLevel;
 
-public class Program 
+public class Program extends nl.tomsanders.util.Program 
 {
 	private static final int PACKAGE_MANAGER_PORT = 1812;
 	
-	public static void main(String[] args)
+	@Argument(tags = "verbose")
+	public boolean verbose = false;
+	
+	@Argument(tags = "start")
+	public void startPackageManager() 
 	{
-		List<String> argumentList = Arrays.asList(args);
-		boolean verbose = argumentList.contains("-v") || argumentList.contains("-verbose") ||
-				argumentList.contains("--v") || argumentList.contains("--verbose");
-		String action = args.length > (verbose ? 1 : 0) ? args[0] : "start";
-		
 		if (verbose)
 		{
 			Log.LEVEL = LogLevel.VERBOSE;
 		}
 		
-		if (action.equals("start"))
-		{
-			startPackageManager();
-		}
-		else if (action.equals("add") && args.length > 3 + (verbose ? 1 : 0))
-		{
-			String packageName = args[1];
-			String packagePath = args[3];
-			int packageVersion = Integer.parseInt(args[2]);
-			
-			updatePackage(packageName, packagePath, packageVersion);
-		}
-		else if (action.equals("clean"))
-		{
-			cleanPackageIndex();
-		}
-	}
-	
-	private static void startPackageManager() 
-	{
 		try
 		{
 			new PackageManager().start();
@@ -56,13 +33,14 @@ public class Program
 		}
 	}
 
-	private static void updatePackage(String packageName, String packagePath, int packageVersion) 
+	@Argument(tags = "add")
+	public void updatePackage(String packageName, String packageVersion, String packagePath) 
 	{
 		if (new File(packagePath).isFile())
 		{
 			try
 			{
-				Package pack = new Package(packageName, packageVersion);
+				Package pack = new Package(packageName, Integer.parseInt(packageVersion));
 				PackagePacket packet = new PackagePacket(pack, Paths.get(packagePath));
 				
 				PackageManagerConnection connection = new PackageManagerConnection(
@@ -81,8 +59,25 @@ public class Program
 		}
 	}
 
-	private static void cleanPackageIndex() 
+	@Argument(tags = "clean")
+	public void cleanPackageIndex() 
 	{
 		throw new RuntimeException("Clean not implemented");
+	}
+	
+	@Override
+	protected void printUsage()
+	{
+		System.out.println("Usage:");
+		System.out.println("  update-manager start [-v]");
+		System.out.println("  update-manager add <name> <version> <path>");
+		System.out.println("  update-manager clean");
+		
+		System.exit(1);
+	}
+	
+	public static void main(String[] args)
+	{
+		new Program().withArguments(args);
 	}
 }
