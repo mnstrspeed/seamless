@@ -70,10 +70,10 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 		this.discoveryService = new DiscoveryService("Dave?", DISCOVERY_PORT);
 		Log.v("Waiting for network interface");
 		this.discoveryService.waitForNetwork();
-		Log.v("Listening for discovery broadcasts on local network");
-		this.discoveryService.startListening(this);
 		Log.v("Sending discovery broadcast on local network");
 		this.discoveryService.sendBroadcast();
+		Log.v("Listening for discovery broadcasts on local network");
+		this.discoveryService.startListening(this);
 	}
 	
 	public void onHostDiscovered(InetAddress address) 

@@ -1,6 +1,5 @@
 package nl.tomsanders.seamless.packagemanager;
 
-import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("serial")
