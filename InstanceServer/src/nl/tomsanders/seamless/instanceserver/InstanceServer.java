@@ -10,6 +10,7 @@ import java.util.Hashtable;
 import java.util.Iterator;
 import java.util.List;
 
+import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.InstancePacket;
@@ -19,16 +20,16 @@ import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.networking.UnknownInstanceResponsePacket;
 
+/**
+ * The InstanceServer runs on each device. It maintains a list of
+ * running instances. The Runtime can request these instances and
+ * any updates of an instance will be synchronized across the network.
+ *
+ */
 public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 {
-	protected static final String LOCAL_HOST = "127.0.0.1";
-	protected static final int LOCAL_PORT = 1901;
-	protected static final int EXTERNAL_PORT = 9501;
-	protected static final int DISCOVERY_PORT = 1809;
-	
 	private ServerSocket externalServerSocket;
 	private ServerSocket internalServerSocket;
-	
 	private InternalInstancePacketReceiver internalReceiver;
 	private ExternalInstancePacketReceiver externalReceiver;
 	private DiscoveryService discoveryService;
@@ -50,13 +51,16 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 	{
 		// Start listening for internal connections
 		this.internalServerSocket = new ServerSocket();
-		this.internalServerSocket.bind(new InetSocketAddress(LOCAL_HOST, LOCAL_PORT));
+		this.internalServerSocket.bind(new InetSocketAddress(
+				NetworkConfiguration.LOCAL_HOST, 
+				NetworkConfiguration.INSTANCESERVER_LOCAL_PORT));
 		new Thread(new Runnable()
 		{
 			@Override
 			public void run() 
 			{
-				Log.v("Now listening for internal connections at " + LOCAL_HOST + ":" + LOCAL_PORT);
+				Log.v("Now listening for internal connections at " + NetworkConfiguration.LOCAL_HOST + 
+						":" + NetworkConfiguration.INSTANCESERVER_LOCAL_PORT);
 				while (!internalServerSocket.isClosed())
 				{
 					try
@@ -75,13 +79,13 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 		}).start();
 		
 		// Start listening for external connections
-		this.externalServerSocket = new ServerSocket(EXTERNAL_PORT);
+		this.externalServerSocket = new ServerSocket(NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
 		new Thread(new Runnable()
 		{
 			@Override
 			public void run() 
 			{
-				Log.v("Now listening for external connections on port " + LOCAL_PORT);
+				Log.v("Now listening for external connections on port " + NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
 				
 				while (!externalServerSocket.isClosed())
 				{
@@ -100,12 +104,14 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 			}	
 		}).start();
 		
-		this.discoveryService = new DiscoveryService("Dave?", DISCOVERY_PORT);
+		this.discoveryService = new DiscoveryService("Dave?", 
+				NetworkConfiguration.INSTANCESERVER_DISCOVERY_PORT);
 		Log.v("Waiting for network interface");
 		this.discoveryService.waitForNetwork();
 		Log.v("Sending discovery broadcast on local network");
 		this.discoveryService.sendBroadcast();
-		Log.v("Listening for discovery broadcasts on local network");
+		Log.v("Listening for discovery broadcasts on local network port " + 
+				NetworkConfiguration.INSTANCESERVER_DISCOVERY_PORT);
 		this.discoveryService.startListening(this);
 	}
 	
@@ -115,7 +121,7 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 		
 		try 
 		{
-			Socket socket = new Socket(address, EXTERNAL_PORT);
+			Socket socket = new Socket(address, NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
 			InstancePacketConnection connection = new InstancePacketConnection(socket);
 			
 			this.sendAllInstances(connection);

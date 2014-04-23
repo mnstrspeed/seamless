@@ -11,6 +11,13 @@ import nl.tomsanders.seamless.networking.InstanceRequestPacket;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.util.Observable;
 
+/**
+ * The Runtime is embedded in each application that uses
+ * instance synchronization. It maintains a connection to
+ * the InstanceServer to send and receive updates for
+ * active instances.
+ *
+ */
 public class Runtime 
 {
 	protected static final String LOCAL_HOST = "127.0.0.1";
