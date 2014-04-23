@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.seamless.runtime;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
 import nl.tomsanders.util.Observable;
@@ -47,6 +47,6 @@ public class InstanceMonitor<T extends Observable<T>> implements Observer<T>
 	public void notify(Observable<T> observable, T data)
 	{
 		Log.v(data.getClass().getName() + "@" + Integer.toHexString(data.hashCode()) + " was modified");
-		InstanceManager.updateInstance(data.getClass(), data);
+		Runtime.updateInstance(data.getClass(), data);
 	}
 }

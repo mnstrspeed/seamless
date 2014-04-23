@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.seamless.runtime;
 
 import nl.tomsanders.seamless.dsi.logging.Log;
 import nl.tomsanders.seamless.dsi.networking.InstancePacket;

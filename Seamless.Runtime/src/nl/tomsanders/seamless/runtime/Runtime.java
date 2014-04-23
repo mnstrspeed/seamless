@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.seamless.runtime;
 
 import java.io.IOException;
 import java.net.Socket;
@@ -11,7 +11,7 @@ import nl.tomsanders.seamless.dsi.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.dsi.networking.InstancePacketConnection;
 import nl.tomsanders.util.Observable;
 
-public class InstanceManager 
+public class Runtime 
 {
 	protected static final String LOCAL_HOST = "127.0.0.1";
 	protected static final int LOCAL_PORT = 1901;
@@ -20,7 +20,7 @@ public class InstanceManager
 	
 	public synchronized static <T extends Observable<T>, Serializable> Reference<T> getInstance(Class<T> type)
 	{
-		return InstanceManager.getInstance(type, new DefaultInstanceFactory<T>(type));
+		return Runtime.getInstance(type, new DefaultInstanceFactory<T>(type));
 	}
 	
 	@SuppressWarnings("unchecked")

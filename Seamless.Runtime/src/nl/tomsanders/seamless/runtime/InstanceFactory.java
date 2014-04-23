@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.seamless.runtime;
 
 public interface InstanceFactory<T> 
 {
