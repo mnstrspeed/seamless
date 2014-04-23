@@ -1,20 +1,21 @@
 package nl.tomsanders.seamless.packagemanager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @SuppressWarnings("serial")
 public class PackageIndexPacket extends PackageManagerPacket
 {
-	private PackageIndex packageIndex;
+	private ArrayList<Package> packages;
 	
 	public PackageIndexPacket(PackageIndex packageIndex) 
 	{
 		super(PacketManagerPacketType.INDEX);
-		this.packageIndex = packageIndex;
+		this.packages = packageIndex.getPackages();
 	}
 	
 	public List<Package> getPackages()
 	{
-		return this.packageIndex.getPackages();
+		return this.packages;
 	}
 }
