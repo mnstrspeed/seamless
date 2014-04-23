@@ -1,4 +1,4 @@
-package nl.seamless.networking;
+package nl.tomsanders.seamless.networking;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;

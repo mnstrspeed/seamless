@@ -3,7 +3,7 @@ package nl.tomsanders.seamless.packagemanager;
 import java.io.IOException;
 import java.net.Socket;
 
-import nl.seamless.networking.ObjectConnection;
+import nl.tomsanders.seamless.networking.ObjectConnection;
 
 public class PackageManagerConnection extends ObjectConnection<PackageManagerPacket> 
 {
