@@ -1,8 +1,8 @@
 package nl.tomsanders.seamless.runtime;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
-import nl.tomsanders.util.Observable;
-import nl.tomsanders.util.Observer;
+import nl.tomsanders.seamless.logging.Log;
+import nl.tomsanders.seamless.util.Observable;
+import nl.tomsanders.seamless.util.Observer;
 
 public class InstanceMonitor<T extends Observable<T>> implements Observer<T>
 {

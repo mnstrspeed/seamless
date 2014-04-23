@@ -1,4 +1,4 @@
-package nl.tomsanders.util;
+package nl.tomsanders.seamless.util;
 
 public interface Observer<T>
 {

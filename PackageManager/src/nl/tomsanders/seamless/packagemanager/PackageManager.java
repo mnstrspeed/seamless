@@ -10,10 +10,10 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Iterator;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
-import nl.tomsanders.util.DiscoveryService;
-import nl.tomsanders.util.ObjectConnection;
-import nl.tomsanders.util.ObjectReceiver;
+import nl.seamless.networking.DiscoveryService;
+import nl.seamless.networking.ObjectConnection;
+import nl.seamless.networking.ObjectReceiver;
+import nl.tomsanders.seamless.logging.Log;
 
 public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 {

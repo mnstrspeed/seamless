@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi.networking;
+package nl.tomsanders.seamless.networking;
 
 /**
  * Packet to request instance from the InstanceServer to initiate

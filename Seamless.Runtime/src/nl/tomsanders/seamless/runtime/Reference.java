@@ -1,6 +1,6 @@
 package nl.tomsanders.seamless.runtime;
 
-import nl.tomsanders.util.Observable;
+import nl.tomsanders.seamless.util.Observable;
 
 public class Reference<T> extends Observable<Reference<T>>
 {

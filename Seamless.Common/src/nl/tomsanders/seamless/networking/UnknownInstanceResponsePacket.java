@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi.networking;
+package nl.tomsanders.seamless.networking;
 
 @SuppressWarnings("serial")
 public class UnknownInstanceResponsePacket extends InstancePacket

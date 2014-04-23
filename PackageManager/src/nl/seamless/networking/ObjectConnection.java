@@ -1,4 +1,4 @@
-package nl.tomsanders.util;
+package nl.seamless.networking;
 
 import java.io.IOException;
 import java.io.ObjectInputStream;
@@ -6,7 +6,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Socket;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
+import nl.tomsanders.seamless.logging.Log;
 
 public class ObjectConnection<T extends Serializable>
 {

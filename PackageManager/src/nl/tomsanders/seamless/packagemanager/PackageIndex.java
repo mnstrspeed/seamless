@@ -9,7 +9,7 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
+import nl.tomsanders.seamless.logging.Log;
 
 public class PackageIndex 
 {

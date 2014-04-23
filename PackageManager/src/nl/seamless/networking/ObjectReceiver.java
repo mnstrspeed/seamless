@@ -1,4 +1,4 @@
-package nl.tomsanders.util;
+package nl.seamless.networking;
 
 import java.io.Serializable;
 

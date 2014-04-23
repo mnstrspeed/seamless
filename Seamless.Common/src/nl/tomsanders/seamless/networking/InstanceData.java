@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi.networking;
+package nl.tomsanders.seamless.networking;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

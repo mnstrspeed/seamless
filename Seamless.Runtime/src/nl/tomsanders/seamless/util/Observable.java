@@ -1,4 +1,4 @@
-package nl.tomsanders.util;
+package nl.tomsanders.seamless.util;
 
 import java.util.ArrayList;
 import java.util.Iterator;

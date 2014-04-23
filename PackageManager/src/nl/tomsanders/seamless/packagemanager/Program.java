@@ -5,8 +5,8 @@ import java.io.IOException;
 import java.net.Socket;
 import java.nio.file.Paths;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
-import nl.tomsanders.seamless.dsi.logging.LogLevel;
+import nl.tomsanders.seamless.logging.Log;
+import nl.tomsanders.seamless.logging.LogLevel;
 
 public class Program extends nl.tomsanders.util.Program 
 {

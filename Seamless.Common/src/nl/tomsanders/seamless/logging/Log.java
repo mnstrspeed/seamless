@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi.logging;
+package nl.tomsanders.seamless.logging;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;

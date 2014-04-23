@@ -3,13 +3,13 @@ package nl.tomsanders.seamless.runtime;
 import java.io.IOException;
 import java.net.Socket;
 
-import nl.tomsanders.seamless.dsi.logging.Log;
-import nl.tomsanders.seamless.dsi.networking.InstancePacket;
-import nl.tomsanders.seamless.dsi.networking.InstancePacketType;
-import nl.tomsanders.seamless.dsi.networking.InstanceRequestPacket;
-import nl.tomsanders.seamless.dsi.networking.InstanceSyncPacket;
-import nl.tomsanders.seamless.dsi.networking.InstancePacketConnection;
-import nl.tomsanders.util.Observable;
+import nl.tomsanders.seamless.logging.Log;
+import nl.tomsanders.seamless.networking.InstancePacket;
+import nl.tomsanders.seamless.networking.InstancePacketConnection;
+import nl.tomsanders.seamless.networking.InstancePacketType;
+import nl.tomsanders.seamless.networking.InstanceRequestPacket;
+import nl.tomsanders.seamless.networking.InstanceSyncPacket;
+import nl.tomsanders.seamless.util.Observable;
 
 public class Runtime 
 {
