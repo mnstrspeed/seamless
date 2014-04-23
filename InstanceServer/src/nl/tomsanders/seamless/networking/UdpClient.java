@@ -1,4 +1,5 @@
-package nl.tomsanders.util;
+package nl.tomsanders.seamless.networking;
+
 
 import java.io.Closeable;
 import java.io.IOException;

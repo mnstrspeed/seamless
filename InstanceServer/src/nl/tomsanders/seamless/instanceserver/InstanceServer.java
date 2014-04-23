@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi.server;
+package nl.tomsanders.seamless.instanceserver;
 
 import java.io.IOException;
 import java.net.InetAddress;
@@ -11,6 +11,7 @@ import java.util.Iterator;
 import java.util.List;
 
 import nl.tomsanders.seamless.logging.Log;
+import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
 import nl.tomsanders.seamless.networking.InstancePacketReceiver;
@@ -18,18 +19,19 @@ import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.networking.UnknownInstanceResponsePacket;
 
-public class InstanceServer 
+public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 {
 	protected static final String LOCAL_HOST = "127.0.0.1";
 	protected static final int LOCAL_PORT = 1901;
 	protected static final int EXTERNAL_PORT = 9501;
+	protected static final int DISCOVERY_PORT = 1809;
 	
 	private ServerSocket externalServerSocket;
 	private ServerSocket internalServerSocket;
 	
 	private InternalInstancePacketReceiver internalReceiver;
 	private ExternalInstancePacketReceiver externalReceiver;
-	private InstanceServerDiscoveryService discoveryService;
+	private DiscoveryService discoveryService;
 
 	private Hashtable<String, InstanceSyncPacket> instances;
 	private InstancePacketConnection internalConnection;
@@ -98,14 +100,16 @@ public class InstanceServer
 			}	
 		}).start();
 		
-		this.discoveryService = new InstanceServerDiscoveryService(this);
+		this.discoveryService = new DiscoveryService("Dave?", DISCOVERY_PORT);
+		Log.v("Waiting for network interface");
+		this.discoveryService.waitForNetwork();
 		Log.v("Sending discovery broadcast on local network");
 		this.discoveryService.sendBroadcast();
 		Log.v("Listening for discovery broadcasts on local network");
-		this.discoveryService.startListening();
+		this.discoveryService.startListening(this);
 	}
 	
-	public void registerNewInstanceServer(InetAddress address)
+	public void onHostDiscovered(InetAddress address)
 	{
 		Log.v("Received discovery broadcast");
 		

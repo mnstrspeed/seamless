@@ -1,4 +1,5 @@
-package nl.tomsanders.util;
+package nl.tomsanders.seamless.networking;
+
 
 import java.io.Closeable;
 import java.io.IOException;
@@ -24,6 +25,7 @@ public class UdpServer implements Closeable
 				receiveData, receiveData.length);
 		
 		socket.receive(packet);
+		
 		return packet;
 	}
 	
