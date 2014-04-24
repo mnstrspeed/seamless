@@ -7,4 +7,7 @@ public abstract class NetworkConfiguration
 	public static final int INSTANCESERVER_DISCOVERY_PORT = 1809;
 	public static final int INSTANCESERVER_LOCAL_PORT = 1901;
 	public static final int INSTANCESERVER_REMOTE_PORT = 9501;
+	
+	public static final int PACKAGEMANAGER_DISCOVERY_PORT = 1811;
+	public static final int PACKAGEMANAGER_PORT = 1812;
 }

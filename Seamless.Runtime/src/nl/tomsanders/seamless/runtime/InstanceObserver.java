@@ -2,7 +2,6 @@ package nl.tomsanders.seamless.runtime;
 
 import java.io.Serializable;
 
-import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.util.Observable;
 import nl.tomsanders.seamless.util.Observer;
 
@@ -28,9 +27,6 @@ public class InstanceObserver<T extends Observable<T> & Serializable> implements
 	
 	private void referenceUpdated()
 	{
-		Log.v(this.getClass().getName() + "@" + Integer.toHexString(this.hashCode()) + 
-				" was re-referenced");
-		
 		// Stop observing old instance, if exists
 		if (this.currentInstance != null)
 		{

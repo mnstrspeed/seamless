@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.Hashtable;
 import java.util.Iterator;
 
+import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.ObjectConnection;
@@ -18,9 +19,6 @@ import nl.tomsanders.seamless.networking.ObjectReceiver;
 public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 {
 	private PackageIndex packageIndex;
-	
-	private static final int DISCOVERY_PORT = 1811;
-	private static final int PACKAGE_MANAGER_PORT = 1812;
 	
 	private DiscoveryService discoveryService;
 	private ServerSocket socket;
@@ -43,7 +41,7 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 				this.launchPackage(pack);
 		}
 		
-		this.socket = new ServerSocket(PACKAGE_MANAGER_PORT);
+		this.socket = new ServerSocket(NetworkConfiguration.PACKAGEMANAGER_PORT);
 		new Thread(new Runnable()
 		{
 			@Override
@@ -67,7 +65,8 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 			}	
 		}).start();
 		
-		this.discoveryService = new DiscoveryService("Dave?", DISCOVERY_PORT);
+		this.discoveryService = new DiscoveryService("Dave?", 
+				NetworkConfiguration.PACKAGEMANAGER_DISCOVERY_PORT);
 		Log.v("Waiting for network interface");
 		this.discoveryService.waitForNetwork();
 		Log.v("Sending discovery broadcast on local network");
@@ -82,7 +81,7 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 		
 		try 
 		{
-			Socket socket = new Socket(address, PACKAGE_MANAGER_PORT);
+			Socket socket = new Socket(address, NetworkConfiguration.PACKAGEMANAGER_PORT);
 			PackageManagerConnection connection = new PackageManagerConnection(socket);
 			
 			connection.send(new PackageIndexPacket(this.packageIndex));
