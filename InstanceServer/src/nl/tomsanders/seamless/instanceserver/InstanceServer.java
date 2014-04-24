@@ -3,7 +3,6 @@ package nl.tomsanders.seamless.instanceserver;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.ArrayList;
 import java.util.Hashtable;
@@ -15,9 +14,9 @@ import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
-import nl.tomsanders.seamless.networking.InstancePacketReceiver;
 import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
+import nl.tomsanders.seamless.networking.Server;
 import nl.tomsanders.seamless.networking.UnknownInstanceResponsePacket;
 
 /**
@@ -26,84 +25,48 @@ import nl.tomsanders.seamless.networking.UnknownInstanceResponsePacket;
  * any updates of an instance will be synchronized across the network.
  *
  */
-public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
+public class InstanceServer
 {
-	private ServerSocket externalServerSocket;
-	private ServerSocket internalServerSocket;
-	private InternalInstancePacketReceiver internalReceiver;
-	private ExternalInstancePacketReceiver externalReceiver;
+	private Server localServer;
+	private Server remoteServer;
 	private DiscoveryService discoveryService;
 
+	private List<InstancePacketConnection> localConnections;
+	private List<InstancePacketConnection> remoteConnections;
 	private Hashtable<String, InstanceSyncPacket> instances;
-	private InstancePacketConnection internalConnection;
-	private List<InstancePacketConnection> externalConnections;
 	
 	public InstanceServer()
 	{
-		this.externalConnections = new ArrayList<InstancePacketConnection>();
-		this.instances = new Hashtable<String, InstanceSyncPacket>();
+		this.remoteConnections = new ArrayList<InstancePacketConnection>();
+		this.localConnections = new ArrayList<InstancePacketConnection>();
 		
-		this.internalReceiver = new InternalInstancePacketReceiver();
-		this.externalReceiver = new ExternalInstancePacketReceiver();
+		this.instances = new Hashtable<String, InstanceSyncPacket>();
 	}
 	
 	public void start() throws IOException
 	{
-		// Start listening for internal connections
-		this.internalServerSocket = new ServerSocket();
-		this.internalServerSocket.bind(new InetSocketAddress(
+		// Start listening for local connections
+		this.localServer = new Server(new InetSocketAddress(
 				NetworkConfiguration.LOCAL_HOST, 
-				NetworkConfiguration.INSTANCESERVER_LOCAL_PORT));
-		new Thread(new Runnable()
-		{
-			@Override
-			public void run() 
-			{
-				Log.v("Now listening for internal connections at " + NetworkConfiguration.LOCAL_HOST + 
-						":" + NetworkConfiguration.INSTANCESERVER_LOCAL_PORT);
-				while (!internalServerSocket.isClosed())
-				{
-					try
-					{
-						Socket connection = internalServerSocket.accept();
-						Log.v("Incoming internal connection from " + connection.getInetAddress());
-						
-						handleInternalConnection(connection);
-					}
-					catch (Exception ex) 
-					{ 
-						Log.e("Exception was thrown while handling internal connection: " + ex);
-					}
-				}
-			}	
-		}).start();
+				NetworkConfiguration.INSTANCESERVER_LOCAL_PORT),
+				this::onLocalConnection);
+		this.localServer.setOnStartListener(endpoint ->
+			Log.v("Now listening for local connections at " + endpoint));
+		this.localServer.setExceptionHandler((ex, endpoint) ->
+			Log.e("Exception while handling local connection at " + endpoint + ": " + ex));
+		this.localServer.start();
 		
-		// Start listening for external connections
-		this.externalServerSocket = new ServerSocket(NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
-		new Thread(new Runnable()
-		{
-			@Override
-			public void run() 
-			{
-				Log.v("Now listening for external connections on port " + NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
-				
-				while (!externalServerSocket.isClosed())
-				{
-					try
-					{
-						Socket connection = externalServerSocket.accept();
-						Log.v("Incoming external connection from " + connection.getInetAddress());
-						
-						handleExternalConnection(connection);
-					}
-					catch (Exception ex) 
-					{ 
-						Log.e("Exception was thrown while handling external connection: " + ex);
-					}
-				}
-			}	
-		}).start();
+		// Start listening for remote connections
+		this.remoteServer = new Server(new InetSocketAddress(
+				NetworkConfiguration.INSTANCESERVER_REMOTE_PORT),
+				this::onRemoteConnection);
+		this.remoteServer.setOnStartListener(endpoint ->
+			Log.v("Now listening for remote connections at " + endpoint));
+		this.remoteServer.setExceptionHandler((ex, endpoint) ->
+			Log.e("Exception while handling remote connection at " + endpoint + ": " + ex));
+		this.remoteServer.start();
 		
+		// Start discovery service
 		this.discoveryService = new DiscoveryService("Dave?", 
 				NetworkConfiguration.INSTANCESERVER_DISCOVERY_PORT);
 		Log.v("Waiting for network interface");
@@ -112,36 +75,40 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 		this.discoveryService.sendBroadcast();
 		Log.v("Listening for discovery broadcasts on local network port " + 
 				NetworkConfiguration.INSTANCESERVER_DISCOVERY_PORT);
-		this.discoveryService.startListening(this);
+		this.discoveryService.startListening(this::onHostDiscovered);
 	}
 	
 	public void onHostDiscovered(InetAddress address)
 	{
-		Log.v("Received discovery broadcast");
+		Log.v("Received discovery broadcast from " + address.getHostAddress());
 		
-		try 
+		try
 		{
 			Socket socket = new Socket(address, NetworkConfiguration.INSTANCESERVER_REMOTE_PORT);
 			InstancePacketConnection connection = new InstancePacketConnection(socket);
 			
+			this.addRemoteConnection(connection);
 			this.sendAllInstances(connection);
-			this.registerExternalConnection(connection);
 		} 
 		catch (Exception e)
 		{
-			Log.e("Failed to initiate connection with new InstanceServer: " +
-					e.getMessage());
+			Log.e("Failed to initiate connection with new host: " + e.getMessage());
 		}
 	}
 	
-	protected void handleInternalConnection(Socket socket) throws IOException, ClassNotFoundException 
+	protected void onLocalConnection(Socket socket) throws IOException, ClassNotFoundException 
 	{
 		InstancePacketConnection connection = new InstancePacketConnection(socket);
 		InstancePacket request = connection.receive();
 		
 		if (request.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
 		{
-			if (!this.instances.containsKey(request.getInstanceIdentifier()))
+			if (this.instances.containsKey(request.getInstanceIdentifier()))
+			{
+				Log.v(socket.getInetAddress() + " requested instance " + request.getInstanceIdentifier());
+				connection.send(this.instances.get(request.getInstanceIdentifier()));
+			}
+			else
 			{
 				// Should only happen on first time run
 				Log.v(socket.getInetAddress() + " requested unknown instance " + request.getInstanceIdentifier());
@@ -150,168 +117,119 @@ public class InstanceServer implements DiscoveryService.DiscoveryServiceListener
 				// Client will now create a new instance and send it to
 				// us in an InstanceSyncPacket
 			}
-			else
-			{
-				Log.v(socket.getInetAddress() + " requested instance " + request.getInstanceIdentifier());
-				connection.send(this.instances.get(request.getInstanceIdentifier()));
-			}
-				
-			// Listen for future updates
-			this.internalConnection = connection;
-			this.internalConnection.receiveAsync(this.internalReceiver, true);
+			
+			this.addLocalConnection(connection);
 		}
 		else
 		{
+			connection.close();
 			throw new RuntimeException("Illegal request to server: connection may "
 					+ "only be initiated with instance request");
 		}
 	}
 	
-	protected void handleExternalConnection(Socket socket) throws IOException, ClassNotFoundException
+	protected void onRemoteConnection(Socket socket) throws IOException, ClassNotFoundException
 	{
-		InstancePacketConnection connection = new InstancePacketConnection(socket);
-		this.registerExternalConnection(connection);
-	}
-
-	private void registerExternalConnection(InstancePacketConnection connection) 
-			throws IOException 
-	{
-		this.externalConnections.add(connection);
-		connection.receiveAsync(this.externalReceiver, true);
+		this.addRemoteConnection(new InstancePacketConnection(socket));
 	}
 	
-	private class InternalInstancePacketReceiver implements InstancePacketReceiver 
+	private void addLocalConnection(InstancePacketConnection connection) throws IOException 
 	{
-		@Override
-		public void receivePacket(InstancePacket packet,
-				InstancePacketConnection connection) 
+		this.localConnections.add(connection);
+		connection.receiveAsync(this::onLocalPacket, true);
+	}
+
+	private void addRemoteConnection(InstancePacketConnection connection) throws IOException 
+	{
+		this.remoteConnections.add(connection);
+		connection.receiveAsync(this::onRemotePacket, true);
+	}
+	
+	public void onLocalPacket(InstancePacket packet, InstancePacketConnection connection) 
+	{
+		InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+		Log.v(connection + " updated " + packet.getInstanceIdentifier());
+		
+		this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
+		this.updateConnections(this.remoteConnections, syncPacket);
+	}
+	
+	public void onRemotePacket(InstancePacket packet, InstancePacketConnection connection) 
+	{
+		try
 		{
-			Log.v(connection.getSocket().getInetAddress() + 
-				" updated " + packet.getInstanceIdentifier());
-			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-			
-			InstanceServer.this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
+			if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
+			{
+				if (!this.instances.containsKey(packet.getInstanceIdentifier()))
+				{
+					Log.v(connection + " requested unknown instance " + packet.getInstanceIdentifier());
+					connection.send(new UnknownInstanceResponsePacket(packet));
+				}
+				else
+				{
+					Log.v(connection + " requested " + packet.getInstanceIdentifier());
+					connection.send(this.instances.get(packet.getInstanceIdentifier()));
+				}
+			}
+			else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
+			{
+				Log.v(connection + " updated " + packet.getInstanceIdentifier());
+				
+				InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+				this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
+				
+				this.updateConnections(this.localConnections, syncPacket);
+				//this.updateExternalConnections(connection); // act as hub?
+			}
+		}
+		catch (Exception ex)
+		{
+			Log.e("Failed to process packet from " + connection + ": " + ex.getMessage());
+		}
+	}
+	
+	private void sendAllInstances(InstancePacketConnection connection) throws IOException
+	{
+		for (InstanceSyncPacket instance : this.instances.values())
+		{
+			this.updateConnection(connection, instance);
+		}
+	}
+	
+	private void updateConnections(List<InstancePacketConnection> connections, 
+			InstanceSyncPacket instance)
+	{
+		for (Iterator<InstancePacketConnection> iterator = connections.iterator(); iterator.hasNext(); )
+		{
+			InstancePacketConnection connection = iterator.next();
 			try
 			{
-				InstanceServer.this.updateExternalConnections(syncPacket.getInstanceIdentifier());
+				this.updateConnection(connection, instance);
 			}
 			catch (IOException ex)
 			{
-				throw new RuntimeException("Invalid update from client: " + ex.getMessage());
-			}
-		}
-	}
-	
-	private class ExternalInstancePacketReceiver implements InstancePacketReceiver
-	{
-		@Override
-		public void receivePacket(InstancePacket packet,
-				InstancePacketConnection connection) 
-		{
-			try
-			{
-				if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
-				{
-					// Someone heard 'bout our instance and wants in!
-					if (!InstanceServer.this.instances.containsKey(packet.getInstanceIdentifier()))
-					{
-						// Should only happen on first time run
-						Log.v(connection.getSocket().getInetAddress() + " requested unknown instance " 
-								+ packet.getInstanceIdentifier());
-						connection.send(new UnknownInstanceResponsePacket(packet));
-					}
-					else
-					{
-						Log.v(connection.getSocket().getInetAddress() + " requested " 
-								+ packet.getInstanceIdentifier());
-						connection.send(InstanceServer.this.instances.get(packet.getInstanceIdentifier()));
-					}
-				}
-				else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
-				{
-					Log.v(connection.getSocket().getInetAddress() + 
-							" updated " + packet.getInstanceIdentifier());
-					
-					InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-					InstanceServer.this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
-					try
-					{
-						InstanceServer.this.updateInternalConnection(syncPacket.getInstanceIdentifier());
-						//InstanceServer.this.updateExternalConnections(connection);
-					}
-					catch (IOException ex)
-					{
-						throw new RuntimeException("Invalid update from client");
-					}
-				}
-			}
-			catch (Exception ex)
-			{
-				Log.e("Failed to process packet from " + connection.getSocket().getInetAddress() + ": " +
-						ex.getMessage());
-			}
-		}
-	}
-	
-	private boolean updateInternalConnection(String instanceIdentifier) throws IOException 
-	{
-		if (this.internalConnection != null && 
-				!this.internalConnection.getSocket().isClosed())
-		{
-			this.internalConnection.send(this.instances.get(instanceIdentifier));
-			return true;
-		}
-		else
-		{
-			return false;
-		}
-	}
-
-	private void updateExternalConnections(String instanceIdentifier) throws IOException 
-	{
-		Iterator<InstancePacketConnection> iterator = this.externalConnections.iterator();
-		while (iterator.hasNext())
-		{
-			InstancePacketConnection connection = iterator.next();
-			if (!this.updateExternalConnection(connection, instanceIdentifier))
-			{
-				Log.w("Connection to " + connection.getSocket().getInetAddress() + " was lost");
 				iterator.remove();
 			}
 		}
 	}
 	
-	private boolean updateExternalConnection(InstancePacketConnection connection, String instanceIdentifier) 
-			throws IOException
+	private void updateConnection(InstancePacketConnection connection, 
+			InstanceSyncPacket instance) throws IOException
 	{
-		if (connection != null && 
-				!connection.getSocket().isClosed())
+		if (connection.isAvailable())
 		{
-			if (this.instances.containsKey(instanceIdentifier))
-			{
-				Log.v("Sending " + instanceIdentifier + " to " + connection.getSocket().getInetAddress());
-				connection.send(this.instances.get(instanceIdentifier));
-			}
-			return true;
+			Log.v("Sending " + instance.getInstanceIdentifier() + " to " + connection);
+			connection.send(instance);
 		}
 		else
 		{
-			return false;
-		}
-	}
-	
-	private void sendAllInstances(InstancePacketConnection connection) 
-			throws IOException
-	{
-		for (String instanceIdentifier : this.instances.keySet())
-		{
-			this.updateExternalConnection(connection, instanceIdentifier);
+			throw new IOException("Connection closed");
 		}
 	}
 
 	public static void main(String[] args)
 	{
-		try 
+		try
 		{	
 			new InstanceServer().start();
 		} 

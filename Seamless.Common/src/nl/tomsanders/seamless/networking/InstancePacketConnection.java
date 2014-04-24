@@ -16,6 +16,7 @@ public class InstancePacketConnection implements Closeable
 	
 	private boolean isReceivingAsync = false;
 	private Thread asyncThread;
+	private boolean available;
 	
 	public InstancePacketConnection(Socket socket) throws IOException
 	{
@@ -23,12 +24,22 @@ public class InstancePacketConnection implements Closeable
 		this.outputStream = new ObjectOutputStream(this.connection.getOutputStream());
 		this.inputStream = new ObjectInputStream(this.connection.getInputStream()); 
 		// Blocked until remote ObjectOutputStream is initialized
+		
+		this.available = true;
 	}
 	
 	public void send(InstancePacket packet) throws IOException
 	{
-		this.outputStream.writeObject(packet);
-		this.outputStream.flush();
+		try
+		{
+			this.outputStream.writeObject(packet);
+			this.outputStream.flush();
+		}
+		catch (IOException ex)
+		{
+			this.available = false;
+			throw ex;
+		}
 	}
 	
 	public InstancePacket receive() throws ClassNotFoundException, IOException
@@ -39,7 +50,17 @@ public class InstancePacketConnection implements Closeable
 					+ "while receiving asynchronously");
 		}
 		
-		return (InstancePacket)this.inputStream.readObject();
+		try
+		{
+			return (InstancePacket)this.inputStream.readObject();
+		}
+		catch (IOException ex)
+		{
+			Log.e("Connection to " + connection.getInetAddress() + " interrupted");
+			this.available = false;
+			
+			throw ex;
+		}
 	}
 	
 	public void receiveAsync(InstancePacketReceiver receiver, boolean repeat) throws IOException
@@ -53,11 +74,17 @@ public class InstancePacketConnection implements Closeable
 	public void close() throws IOException
 	{
 		this.connection.close();
+		this.available = false;
 	}
 	
 	public Socket getSocket()
 	{
 		return this.connection;
+	}
+	
+	public boolean isAvailable()
+	{
+		return this.available;
 	}
 	
 	private class AsyncReceiver implements Runnable
@@ -94,6 +121,13 @@ public class InstancePacketConnection implements Closeable
 			{
 				Log.e("Invalid update from " + connection.getInetAddress() + ", terminating connection");
 			} 
+			available = false;
 		}
+	}
+	
+	@Override
+	public String toString()
+	{
+		return this.connection.getInetAddress().getHostAddress();
 	}
 }

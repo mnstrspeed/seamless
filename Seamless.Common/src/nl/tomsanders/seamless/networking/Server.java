@@ -1,29 +1,44 @@
 package nl.tomsanders.seamless.networking;
 
 import java.io.IOException;
-import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.net.SocketAddress;
+import java.util.LinkedList;
+import java.util.List;
 
 import nl.tomsanders.seamless.logging.Log;
 
 public class Server 
-{
+{	
 	public static interface ConnectionHandler
 	{
-		public void handle(Socket connection);
+		public void handle(Socket connection) throws Exception;
 	}
 	
-	private final InetSocketAddress endpoint;
-	private final ConnectionHandler handler;
+	public static interface ExceptionHandler
+	{
+		public void handle(Exception ex, SocketAddress endpoint);
+	}
+	
+	public static interface EventListener
+	{
+		public void notify(SocketAddress endpoint);
+	}
+	
+	private final SocketAddress endpoint;
+	private final ConnectionHandler connectionHandler;
 	
 	private ServerSocket serverSocket;
 	private Thread thread;
 	
-	public Server(final InetSocketAddress endpoint, ConnectionHandler handler)
+	private ExceptionHandler exceptionHandler;
+	private EventListener onStartListener;
+	
+	public Server(final SocketAddress endpoint, final ConnectionHandler handler)
 	{
 		this.endpoint = endpoint;
-		this.handler = handler;
+		this.connectionHandler = handler;
 	}
 	
 	public void start() throws IOException
@@ -36,7 +51,7 @@ public class Server
 			@Override
 			public void run() 
 			{
-				Log.v("Now listening for connections at " + endpoint.toString());
+				onStart();
 				while (!serverSocket.isClosed())
 				{
 					try
@@ -46,7 +61,7 @@ public class Server
 					}
 					catch (Exception ex) 
 					{ 
-						Log.e("Exception was thrown while handling connection: " + ex);
+						onException(ex);
 					}
 				}
 			}
@@ -54,9 +69,30 @@ public class Server
 		this.thread.start();
 	}
 	
-	private void handle(Socket connection)
+	public void setOnStartListener(EventListener listener)
 	{
-		Log.v("Incoming connection from " + connection.getInetAddress());
-		this.handler.handle(connection);
+		this.onStartListener = listener;
+	}
+	
+	public void setExceptionHandler(ExceptionHandler handler)
+	{
+		this.exceptionHandler = handler;
+	}
+	
+	private void handle(Socket connection) throws Exception
+	{
+		this.connectionHandler.handle(connection);
+	}
+	
+	private void onException(Exception ex) 
+	{
+		if (this.exceptionHandler != null)
+			this.exceptionHandler.handle(ex, this.endpoint);
+	}
+
+	private void onStart() 
+	{
+		if (this.onStartListener != null)
+			this.onStartListener.notify(this.endpoint);
 	}
 }
