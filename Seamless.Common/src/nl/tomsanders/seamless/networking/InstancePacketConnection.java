@@ -10,6 +10,11 @@ import nl.tomsanders.seamless.logging.Log;
 
 public class InstancePacketConnection implements Closeable
 {
+	public static interface InstancePacketReceiver 
+	{
+		public void receivePacket(InstancePacket packet, InstancePacketConnection connection) throws IOException;
+	}
+	
 	private final Socket connection;
 	private ObjectOutputStream outputStream;
 	private ObjectInputStream inputStream;

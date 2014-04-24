@@ -3,11 +3,10 @@ package nl.tomsanders.seamless.runtime;
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
-import nl.tomsanders.seamless.networking.InstancePacketReceiver;
 import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
 
-public class InstanceManagerPacketReceiver<T> implements InstancePacketReceiver
+public class InstanceManagerPacketReceiver<T> implements InstancePacketConnection.InstancePacketReceiver
 {
 	private Reference<T> reference;
 	
@@ -16,8 +15,8 @@ public class InstanceManagerPacketReceiver<T> implements InstancePacketReceiver
 		this.reference = reference;
 	}
 	
-	@SuppressWarnings("unchecked")
 	@Override
+	@SuppressWarnings("unchecked")
 	public void receivePacket(InstancePacket packet, InstancePacketConnection connection) 
 	{
 		if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)

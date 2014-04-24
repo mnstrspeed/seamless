@@ -1,8 +1,12 @@
 package nl.tomsanders.seamless.runtime;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.Socket;
+import java.util.LinkedList;
+import java.util.List;
 
+import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
@@ -20,24 +24,22 @@ import nl.tomsanders.seamless.util.Observable;
  */
 public class Runtime 
 {
-	protected static final String LOCAL_HOST = "127.0.0.1";
-	protected static final int LOCAL_PORT = 1901;
-	
 	private static InstancePacketConnection instanceServerConnection;
 	
-	public synchronized static <T extends Observable<T>, Serializable> Reference<T> getInstance(Class<T> type)
+	public synchronized static <T extends Observable<T> & Serializable> Reference<T> getInstance(Class<T> type)
 	{
 		return Runtime.getInstance(type, new DefaultInstanceFactory<T>(type));
 	}
 	
 	@SuppressWarnings("unchecked")
-	public synchronized static <T extends Observable<T>, Serializable> Reference<T> getInstance(Class<T> type, InstanceFactory<T> factory)
+	public synchronized static <T extends Observable<T> & Serializable> Reference<T> getInstance(Class<T> type, InstanceFactory<T> factory)
 	{
 		try
 		{
 			Log.v("Initializing connection with instance server");
-			instanceServerConnection = new InstancePacketConnection(
-					new Socket(LOCAL_HOST, LOCAL_PORT));
+			instanceServerConnection = new InstancePacketConnection(new Socket(
+					NetworkConfiguration.LOCAL_HOST, 
+					NetworkConfiguration.INSTANCESERVER_LOCAL_PORT));
 			
 			Log.v("Sending instance request to instance server");
 			instanceServerConnection.send(new InstanceRequestPacket(type));
@@ -61,7 +63,7 @@ public class Runtime
 						+ "creating new instance");
 				
 				instance = factory.createInstance();
-				instanceServerConnection.send(new InstanceSyncPacket((java.io.Serializable)instance));
+				instanceServerConnection.send(new InstanceSyncPacket(instance));
 				
 				Log.v("Newly created instance transmitted to instance server");
 			}
@@ -74,9 +76,11 @@ public class Runtime
 			// Create reference
 			Reference<T> reference = new Reference<T>(instance);
 			// Start monitoring the instance
-			new InstanceMonitor<T>(reference);
+			new InstanceObserver<T>(reference, type);
+			
 			// Keep listening for future updates from instance server
 			instanceServerConnection.receiveAsync(new InstanceManagerPacketReceiver<T>(reference), true);
+			
 			return reference;
 		} 
 		catch (Exception ex) 
@@ -85,11 +89,11 @@ public class Runtime
 		}
 	}
 	
-	public synchronized static <T extends Observable<T>, Serializable> void updateInstance(Class<? extends T> type, T instance)
+	public synchronized static <T extends Observable<T> & Serializable> void updateInstance(Class<? extends T> type, T instance)
 	{
-		try 
+		try
 		{
-			InstanceSyncPacket syncPacket = new InstanceSyncPacket((java.io.Serializable)instance);
+			InstanceSyncPacket syncPacket = new InstanceSyncPacket(instance);
 			if (instanceServerConnection != null)
 			{
 				instanceServerConnection.send(syncPacket);
@@ -105,8 +109,17 @@ public class Runtime
 		}
 	}
 	
-	public synchronized static <T extends Observable<T>, Serializable> void releaseInstance(Reference<T> instance)
+	public synchronized static void exit()
 	{
-		
+		if (instanceServerConnection != null)
+		{
+			try
+			{
+				instanceServerConnection.close();
+			}
+			catch (IOException e)
+			{
+			}
+		}
 	}
 }

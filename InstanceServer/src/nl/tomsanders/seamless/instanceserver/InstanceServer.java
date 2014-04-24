@@ -88,7 +88,12 @@ public class InstanceServer
 			InstancePacketConnection connection = new InstancePacketConnection(socket);
 			
 			this.addRemoteConnection(connection);
-			this.sendAllInstances(connection);
+			
+			// Send all instances
+			for (InstanceSyncPacket instance : this.instances.values())
+			{
+				this.updateConnection(connection, instance);
+			}
 		} 
 		catch (Exception e)
 		{
@@ -123,7 +128,7 @@ public class InstanceServer
 		else
 		{
 			connection.close();
-			throw new RuntimeException("Illegal request to server: connection may "
+			Log.e("Illegal request to server: connection may "
 					+ "only be initiated with instance request");
 		}
 	}
@@ -147,52 +152,51 @@ public class InstanceServer
 	
 	public void onLocalPacket(InstancePacket packet, InstancePacketConnection connection) 
 	{
-		InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-		Log.v(connection + " updated " + packet.getInstanceIdentifier());
-		
-		this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
-		this.updateConnections(this.remoteConnections, syncPacket);
-	}
-	
-	public void onRemotePacket(InstancePacket packet, InstancePacketConnection connection) 
-	{
-		try
+		if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
-			if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
-			{
-				if (!this.instances.containsKey(packet.getInstanceIdentifier()))
-				{
-					Log.v(connection + " requested unknown instance " + packet.getInstanceIdentifier());
-					connection.send(new UnknownInstanceResponsePacket(packet));
-				}
-				else
-				{
-					Log.v(connection + " requested " + packet.getInstanceIdentifier());
-					connection.send(this.instances.get(packet.getInstanceIdentifier()));
-				}
-			}
-			else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
-			{
-				Log.v(connection + " updated " + packet.getInstanceIdentifier());
-				
-				InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
-				this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
-				
-				this.updateConnections(this.localConnections, syncPacket);
-				//this.updateExternalConnections(connection); // act as hub?
-			}
+			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+			Log.v(connection + " updated " + packet.getInstanceIdentifier());
+			
+			this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
+			this.updateConnections(this.remoteConnections, syncPacket);
 		}
-		catch (Exception ex)
+		else
 		{
-			Log.e("Failed to process packet from " + connection + ": " + ex.getMessage());
+			Log.e("Illegal request to server by connection " + connection + 
+					": " + packet.getPacketType());
 		}
 	}
 	
-	private void sendAllInstances(InstancePacketConnection connection) throws IOException
+	public void onRemotePacket(InstancePacket packet, InstancePacketConnection connection) throws IOException 
 	{
-		for (InstanceSyncPacket instance : this.instances.values())
+		if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
 		{
-			this.updateConnection(connection, instance);
+			if (!this.instances.containsKey(packet.getInstanceIdentifier()))
+			{
+				Log.v(connection + " requested unknown instance " + packet.getInstanceIdentifier());
+				connection.send(new UnknownInstanceResponsePacket(packet));
+			}
+			else
+			{
+				Log.v(connection + " requested " + packet.getInstanceIdentifier());
+				connection.send(this.instances.get(packet.getInstanceIdentifier()));
+			}
+		}
+		else if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
+		{
+			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
+			Log.v(connection + " updated " + packet.getInstanceIdentifier());
+			
+			this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
+			
+			this.updateConnections(this.localConnections, syncPacket);
+			//this.updateConnections(remoteConnections.filter(
+			//		c -> c != connection, packet); // act as hub?
+		}
+		else
+		{
+			Log.e("Illegal request to server by connection " + connection + 
+					": " + packet.getPacketType());
 		}
 	}
 	
@@ -216,7 +220,7 @@ public class InstanceServer
 	private void updateConnection(InstancePacketConnection connection, 
 			InstanceSyncPacket instance) throws IOException
 	{
-		if (connection.isAvailable())
+		if (connection != null && connection.isAvailable())
 		{
 			Log.v("Sending " + instance.getInstanceIdentifier() + " to " + connection);
 			connection.send(instance);
