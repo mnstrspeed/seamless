@@ -3,6 +3,7 @@ package nl.tomsanders.seamless.packagemanager;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
+import java.net.InetSocketAddress;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Paths;
@@ -15,13 +16,14 @@ import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.ObjectConnection;
 import nl.tomsanders.seamless.networking.ObjectReceiver;
+import nl.tomsanders.seamless.networking.Server;
 
-public class PackageManager implements DiscoveryService.DiscoveryServiceListener
+public class PackageManager
 {
 	private PackageIndex packageIndex;
 	
+	private Server server;
 	private DiscoveryService discoveryService;
-	private ServerSocket socket;
 	private ArrayList<PackageManagerConnection> connections;
 	
 	private Hashtable<String, Process> runningProcesses;
@@ -41,29 +43,14 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 				this.launchPackage(pack);
 		}
 		
-		this.socket = new ServerSocket(NetworkConfiguration.PACKAGEMANAGER_PORT);
-		new Thread(new Runnable()
-		{
-			@Override
-			public void run() 
-			{
-				Log.v("Now listening for incoming connections");
-				while (!socket.isClosed())
-				{
-					try
-					{
-						Socket connection = socket.accept();
-						Log.v("Incoming connection from " + connection.getInetAddress());
-						
-						handleConnection(connection);
-					}
-					catch (Exception ex) 
-					{ 
-						Log.e("Exception was thrown while handling incoming connection: " + ex);
-					}
-				}
-			}	
-		}).start();
+		this.server = new Server(new InetSocketAddress(
+				NetworkConfiguration.PACKAGEMANAGER_PORT),
+				this::onHostConnected);
+		this.server.setOnStartListener(e ->
+			Log.v("Now listening for incoming connections at " + e));
+		this.server.setExceptionHandler((ex, e) ->
+			Log.e("Exception was thrown while handling incoming connection at " + e + ": " + ex));
+		this.server.start();
 		
 		this.discoveryService = new DiscoveryService("Dave?", 
 				NetworkConfiguration.PACKAGEMANAGER_DISCOVERY_PORT);
@@ -72,7 +59,7 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 		Log.v("Sending discovery broadcast on local network");
 		this.discoveryService.sendBroadcast();
 		Log.v("Listening for discovery broadcasts on local network");
-		this.discoveryService.startListening(this);
+		this.discoveryService.startListening(this::onHostDiscovered);
 	}
 	
 	public void onHostDiscovered(InetAddress address) 
@@ -94,117 +81,116 @@ public class PackageManager implements DiscoveryService.DiscoveryServiceListener
 		}
 	}
 	
-	protected void handleConnection(Socket connection) throws IOException 
+	protected void onHostConnected(Socket connection) throws IOException 
 	{
 		PackageManagerConnection c = new PackageManagerConnection(connection);
 		this.connections.add(c);
 		
-		c.receiveAsync(new ObjectReceiver<PackageManagerPacket>() {
-			@Override
-			public void receivePacket(PackageManagerPacket packet,
-					ObjectConnection<PackageManagerPacket> connection)
+		c.receiveAsync(this::onPacketReceived, true);
+	}
+	
+	public void onPacketReceived(PackageManagerPacket packet,
+			ObjectConnection<PackageManagerPacket> connection)
+	{
+		if (packet.getType() == PacketManagerPacketType.INDEX)
+		{
+			Log.v("Received package index from " + connection.getSocket().getInetAddress());
+			PackageIndexPacket indexPacket = (PackageIndexPacket)packet;
+			for (Package p : indexPacket.getPackages())
 			{
-				if (packet.getType() == PacketManagerPacketType.INDEX)
+				if (packageWanted(p))
 				{
-					Log.v("Received package index from " + connection.getSocket().getInetAddress());
-					PackageIndexPacket indexPacket = (PackageIndexPacket)packet;
-					for (Package p : indexPacket.getPackages())
-					{
-						if (packageWanted(p))
-						{
-							Log.v("Requesting " + p + " from " + connection.getSocket().getInetAddress());
-							try
-							{
-								PackageRequestPacket request = new PackageRequestPacket(p);
-								connection.send(request);
-							}
-							catch (IOException ex)
-							{
-								Log.e("Failed to send package request for " + p);
-							}
-						}
-					}
-				}
-				if (packet.getType() == PacketManagerPacketType.REQUEST)
-				{
-					PackageRequestPacket requestPacket = (PackageRequestPacket)packet;
-					Log.v("Received package request for " + requestPacket.getPackage() + " from " +
-							connection.getSocket().getInetAddress());
-					
-					if (packageIndex.containsPackage(requestPacket.getPackage()))
-					{
-						try
-						{
-							PackagePacket response = new PackagePacket(requestPacket.getPackage(),
-									Paths.get(getPackagePath(requestPacket.getPackage())));
-							connection.send(response);
-						}
-						catch (IOException ex)
-						{
-							throw new RuntimeException(ex);
-						}
-					}
-					else
-					{
-						Log.v("Unable to provide " + requestPacket.getPackage() + " for " +
-							connection.getSocket().getInetAddress());
-					}
-				}
-				if (packet.getType() == PacketManagerPacketType.PACKAGE)
-				{
-					PackagePacket packagePacket = (PackagePacket)packet;
-					Log.v("Received package " + packagePacket.getPackage() + " from " +
-							connection.getSocket().getInetAddress());
-					
+					Log.v("Requesting " + p + " from " + connection.getSocket().getInetAddress());
 					try
 					{
-						if (packageWanted(packagePacket.getPackage()))
-						{
-							packagePacket.getPackage().setIsLatestVersion(true);
-							for (Package other : packageIndex.getPackages())
-							{
-								if (packagePacket.getPackage().getName() == other.getName())
-									other.setIsLatestVersion(false);
-							}
-							
-							packageIndex.add(packagePacket.getPackage());
-							savePackage(packagePacket.getPackage(), packagePacket.getData());
-							packageIndex.save();
-							
-							// Let the others know we now have a new package!
-							Iterator<PackageManagerConnection> iterator = connections.iterator();
-							while (iterator.hasNext())
-							{
-								PackageManagerConnection other = iterator.next();
-								if (other == null)
-								{
-									iterator.remove();
-								}
-								else if (other == connection) 
-								{
-									continue;
-								}
-								else if (other.isConnected())
-								{
-									other.send(new PackageIndexPacket(packageIndex));
-								}
-							}
-							
-							launchPackage(packagePacket.getPackage());
-						}
-						else
-						{
-							Log.v("Disregarding package " + packagePacket.getPackage() + " from " +
-									connection.getSocket().getInetAddress());
-						}
+						PackageRequestPacket request = new PackageRequestPacket(p);
+						connection.send(request);
 					}
-					catch (Exception ex)
+					catch (IOException ex)
 					{
-						Log.e("Failed to update package " + packagePacket.getPackage() + ": " + ex.getMessage());
+						Log.e("Failed to send package request for " + p);
 					}
 				}
 			}
-		}, true);
+		}
+		if (packet.getType() == PacketManagerPacketType.REQUEST)
+		{
+			PackageRequestPacket requestPacket = (PackageRequestPacket)packet;
+			Log.v("Received package request for " + requestPacket.getPackage() + " from " +
+					connection.getSocket().getInetAddress());
+			
+			if (packageIndex.containsPackage(requestPacket.getPackage()))
+			{
+				try
+				{
+					PackagePacket response = new PackagePacket(requestPacket.getPackage(),
+							Paths.get(getPackagePath(requestPacket.getPackage())));
+					connection.send(response);
+				}
+				catch (IOException ex)
+				{
+					throw new RuntimeException(ex);
+				}
+			}
+			else
+			{
+				Log.v("Unable to provide " + requestPacket.getPackage() + " for " +
+					connection.getSocket().getInetAddress());
+			}
+		}
+		if (packet.getType() == PacketManagerPacketType.PACKAGE)
+		{
+			PackagePacket packagePacket = (PackagePacket)packet;
+			Log.v("Received package " + packagePacket.getPackage() + " from " +
+					connection.getSocket().getInetAddress());
+			
+			try
+			{
+				if (packageWanted(packagePacket.getPackage()))
+				{
+					packagePacket.getPackage().setIsLatestVersion(true);
+					for (Package other : packageIndex.getPackages())
+					{
+						if (packagePacket.getPackage().getName() == other.getName())
+							other.setIsLatestVersion(false);
+					}
+					
+					packageIndex.add(packagePacket.getPackage());
+					savePackage(packagePacket.getPackage(), packagePacket.getData());
+					packageIndex.save();
+					
+					// Let the others know we now have a new package!
+					Iterator<PackageManagerConnection> iterator = connections.iterator();
+					while (iterator.hasNext())
+					{
+						PackageManagerConnection other = iterator.next();
+						if (other == null)
+						{
+							iterator.remove();
+						}
+						else if (other == connection) 
+						{
+							continue;
+						}
+						else if (other.isConnected())
+						{
+							other.send(new PackageIndexPacket(packageIndex));
+						}
+					}
+					
+					launchPackage(packagePacket.getPackage());
+				}
+				else
+				{
+					Log.v("Disregarding package " + packagePacket.getPackage() + " from " +
+							connection.getSocket().getInetAddress());
+				}
+			}
+			catch (Exception ex)
+			{
+				Log.e("Failed to update package " + packagePacket.getPackage() + ": " + ex.getMessage());
+			}
+		}
 	}
 	
 	protected void savePackage(Package pack, byte[] data) throws IOException
