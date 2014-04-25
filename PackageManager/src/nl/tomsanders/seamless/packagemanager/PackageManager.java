@@ -4,7 +4,6 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
-import java.net.ServerSocket;
 import java.net.Socket;
 import java.nio.file.Paths;
 import java.util.ArrayList;
@@ -15,7 +14,6 @@ import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.ObjectConnection;
-import nl.tomsanders.seamless.networking.ObjectReceiver;
 import nl.tomsanders.seamless.networking.Server;
 
 public class PackageManager
@@ -172,7 +170,7 @@ public class PackageManager
 						{
 							continue;
 						}
-						else if (other.isConnected())
+						else if (other.isAvailable())
 						{
 							other.send(new PackageIndexPacket(packageIndex));
 						}

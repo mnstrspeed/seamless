@@ -16,6 +16,7 @@ import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
 import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
+import nl.tomsanders.seamless.networking.ObjectConnection;
 import nl.tomsanders.seamless.networking.Server;
 import nl.tomsanders.seamless.networking.UnknownInstanceResponsePacket;
 
@@ -150,7 +151,7 @@ public class InstanceServer
 		connection.receiveAsync(this::onRemotePacket, true);
 	}
 	
-	public void onLocalPacket(InstancePacket packet, InstancePacketConnection connection) 
+	public void onLocalPacket(InstancePacket packet, ObjectConnection<InstancePacket> connection) 
 	{
 		if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC)
 		{
@@ -167,7 +168,7 @@ public class InstanceServer
 		}
 	}
 	
-	public void onRemotePacket(InstancePacket packet, InstancePacketConnection connection) throws IOException 
+	public void onRemotePacket(InstancePacket packet, ObjectConnection<InstancePacket> connection) throws IOException 
 	{
 		if (packet.getPacketType() == InstancePacketType.INSTANCE_REQUEST)
 		{

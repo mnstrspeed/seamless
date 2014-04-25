@@ -3,8 +3,6 @@ package nl.tomsanders.seamless.runtime;
 import java.io.IOException;
 import java.io.Serializable;
 import java.net.Socket;
-import java.util.LinkedList;
-import java.util.List;
 
 import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
