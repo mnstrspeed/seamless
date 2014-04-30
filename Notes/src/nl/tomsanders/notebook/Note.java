@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.notebook;
 
 import java.io.Serializable;
 import java.util.Date;

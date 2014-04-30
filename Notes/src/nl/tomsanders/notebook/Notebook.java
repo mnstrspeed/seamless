@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.notebook;
 
 import java.util.List;
 import java.io.Serializable;

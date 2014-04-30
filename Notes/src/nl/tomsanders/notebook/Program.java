@@ -1,4 +1,4 @@
-package nl.tomsanders.seamless.dsi;
+package nl.tomsanders.notebook;
 
 import nl.tomsanders.seamless.runtime.Reference;
 import nl.tomsanders.seamless.runtime.Runtime;
