@@ -11,7 +11,6 @@ import java.util.List;
 
 import nl.tomsanders.seamless.config.NetworkConfiguration;
 import nl.tomsanders.seamless.logging.Log;
-import nl.tomsanders.seamless.logging.LogLevel;
 import nl.tomsanders.seamless.networking.DiscoveryService;
 import nl.tomsanders.seamless.networking.InstancePacket;
 import nl.tomsanders.seamless.networking.InstancePacketConnection;
@@ -232,19 +231,6 @@ public class InstanceServer
 		else
 		{
 			throw new IOException("Connection closed");
-		}
-	}
-
-	public static void main(String[] args)
-	{
-		Log.LEVEL = LogLevel.VERBOSE;
-		try
-		{	
-			new InstanceServer().start();
-		} 
-		catch (IOException e) 
-		{
-			e.printStackTrace();
 		}
 	}
 }

@@ -7,8 +7,9 @@ import java.nio.file.Paths;
 
 import nl.tomsanders.seamless.logging.Log;
 import nl.tomsanders.seamless.logging.LogLevel;
+import nl.tomsanders.util.Program;
 
-public class Program extends nl.tomsanders.util.Program 
+public class Launcher extends Program 
 {
 	private static final int PACKAGE_MANAGER_PORT = 1812;
 	
@@ -78,6 +79,6 @@ public class Program extends nl.tomsanders.util.Program
 	
 	public static void main(String[] args)
 	{
-		new Program().withArguments(args);
+		new Launcher().withArguments(args);
 	}
 }
