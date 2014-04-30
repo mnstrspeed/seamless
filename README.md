@@ -3,20 +3,20 @@ seamless
 
 ports
 -----
-* PackageManager:
-  * ``DISCOVERY_PORT = 1811``
-  * ``PACKAGEMANAGER_PORT = 1812``
-* InstanceServer:
-  * ``DISCOVERY_PORT = ?``
-  * ``INSTANCESERVER_INTERNAL_PORT = ?``
-  * ``INSTANCESERVER_EXTERNAL_PORT = ?``
+* Instance Server
+ * ``INSTANCESERVER_DISCOVERY_PORT = 1809``
+ * ``INSTANCESERVER_LOCAL_PORT = 1901``
+ * ``INSTANCESERVER_REMOTE_PORT = 9501``
+* Package Manager
+ * ``PACKAGEMANAGER_DISCOVERY_PORT = 1811``
+ * ``PACKAGEMANAGER_PORT = 1812``
 
 Installation
 ------------
 * ``git clone https://github.com/mnstrspeed/seamless.git``
 * ``mkdir /opt/seamless``
 * ``ln -s seamless/bin/instanceserver*.jar /opt/seamless/instanceserver.jar``
-* ``ln -s seamless/bin/packagemanager*.java /opt/seamless/packagemanager.jar``
+* ``ln -s seamless/bin/packagemanager*.jar /opt/seamless/packagemanager.jar``
 * ``mkdir /opt/seamless/packages``
 
 /etc/systemd/system/packagemanager.service
