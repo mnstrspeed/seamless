@@ -1,7 +1,7 @@
-seamless
+mnstrspeed/seamless
 ========
 
-ports
+Ports
 -----
 * Instance Server
  * ``INSTANCESERVER_DISCOVERY_PORT = 1809``
