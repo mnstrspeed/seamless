@@ -1,31 +1,39 @@
 package nl.tomsanders.seamless.dsi;
 
-public class Program
+import nl.tomsanders.seamless.runtime.Reference;
+import nl.tomsanders.seamless.runtime.Runtime;
+
+public class Program extends nl.tomsanders.util.Program
 {	
-	public static void main(String[] args)
-	{	
-		Reference<Notebook> notebook = InstanceManager.getInstance(Notebook.class);
-
-		if (args.length == 2)
-		{
-			if (args[0].equals("add"))
-			{
-				notebook.get().addNote(new Note(args[1]));
-			}
-			else if (args[0].equals("remove"))
-			{
-				notebook.get().removeNote(Integer.parseInt(args[1]));
-			}
-			else
-			{
-				System.out.println("Usage: add <note> | remove <note index>");
-			}
-		}
-		else if (args.length != 0)
-		{
-			System.out.println("Usage: add <note> | remove <note index>");
-		}
-
+	private Reference<Notebook> notebook;
+	
+	public Program()
+	{
+		this.notebook = Runtime.getInstance(Notebook.class);
+	}
+	
+	@Argument(tags = "list")
+	public void list()
+	{
+		this.printNotebook();
+	}
+	
+	@Argument(tags = "add")
+	public void addNote(String note)
+	{
+		notebook.get().addNote(new Note(note));
+		this.printNotebook();
+	}
+	
+	@Argument(tags = "remove")
+	public void removeNote(String index)
+	{
+		notebook.get().removeNote(Integer.parseInt(index));
+		this.printNotebook();
+	}
+	
+	private void printNotebook()
+	{
 		System.out.println();
 		if (notebook.get().getNotes().size() != 0)
 		{
@@ -40,7 +48,17 @@ public class Program
 			System.out.println("Notebook is empty");
 		}
 		System.out.println();
-		
-		System.exit(0);
+	}
+	
+	@Override
+	public void printUsage()
+	{
+		System.out.println("Usage: list | add <note> | remove <note index>");
+	}
+	
+	public static void main(String[] args)
+	{	
+		new Program().withArguments(args);
+		Runtime.exit();
 	}
 }

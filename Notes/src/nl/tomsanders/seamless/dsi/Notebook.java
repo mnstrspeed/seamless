@@ -4,7 +4,7 @@ import java.util.List;
 import java.io.Serializable;
 import java.util.ArrayList;
 
-import nl.tomsanders.util.Observable;
+import nl.tomsanders.seamless.util.Observable;
 
 public class Notebook extends Observable<Notebook> implements Serializable
 {
