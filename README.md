@@ -33,7 +33,7 @@ StandardOutput=journal
 StandardError=journal
 WorkingDirectory=/opt/seamless
 Environment=CLASSPATH=/opt/seamless/packagemanager.jar
-ExecStart=/opt/java-current/bin/java nl.tomsanders.seamless.packagemanager.Launcher start -verbose
+ExecStart=/usr/bin/java nl.tomsanders.seamless.packagemanager.Launcher start -verbose
 Restart=always
 RestartSec=5
 
@@ -54,7 +54,7 @@ StandardOutput=journal
 StandardError=journal
 WorkingDirectory=/opt/seamless
 Environment=CLASSPATH=/opt/seamless/instanceserver.jar
-ExecStart=/opt/java-current/bin/java nl.tomsanders.seamless.instanceserver.Launcher
+ExecStart=/usr/bin/java nl.tomsanders.seamless.instanceserver.Launcher
 Restart=always
 RestartSec=5
 
