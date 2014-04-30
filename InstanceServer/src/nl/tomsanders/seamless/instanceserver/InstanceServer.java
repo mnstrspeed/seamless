@@ -137,11 +137,13 @@ public class InstanceServer
 	
 	protected void onRemoteConnection(Socket socket) throws IOException, ClassNotFoundException
 	{
+		Log.v("Incoming remote connection from " + socket.getInetAddress());
 		this.addRemoteConnection(new InstancePacketConnection(socket));
 	}
 	
 	private void addLocalConnection(InstancePacketConnection connection) throws IOException 
 	{
+		Log.v("Incoming local connection");
 		this.localConnections.add(connection);
 		connection.receiveAsync(this::onLocalPacket, true);
 	}
