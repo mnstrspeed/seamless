@@ -13,11 +13,11 @@ ports
 
 Installation
 ------------
-``git clone https://github.com/mnstrspeed/seamless.git``
-``mkdir /opt/seamless``
-``ln -s seamless/bin/instanceserver*.jar /opt/seamless/instanceserver.jar``
-``ln -s seamless/bin/packagemanager*.java /opt/seamless/packagemanager.jar``
-``mkdir /opt/seamless/packages``
+```git clone https://github.com/mnstrspeed/seamless.git```
+```mkdir /opt/seamless```
+```ln -s seamless/bin/instanceserver*.jar /opt/seamless/instanceserver.jar```
+```ln -s seamless/bin/packagemanager*.java /opt/seamless/packagemanager.jar```
+```mkdir /opt/seamless/packages```
 
 /etc/systemd/system/packagemanager.service
 ```
@@ -62,6 +62,6 @@ RestartSec=5
 WantedBy=multi-user.target
 ```
 
-``systemctl enable instanceserver``
-``systemctl enable packagemanager``
-``reboot``
+```systemctl enable instanceserver```
+```systemctl enable packagemanager```
+```reboot```
