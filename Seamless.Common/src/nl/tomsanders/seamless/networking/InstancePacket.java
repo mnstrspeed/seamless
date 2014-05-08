@@ -20,7 +20,7 @@ public abstract class InstancePacket implements Serializable
 	protected InstancePacket(InstancePacketType packetType, Class<?> type, String identifier)
 	{
 		this.packetType = packetType;
-		this.instanceIdentifier = type.getCanonicalName() + "#" + identifier;
+		this.instanceIdentifier = getInstanceIdentifier(type, identifier);
 	}
 	
 	public InstancePacket(InstancePacketType packetType, InstancePacket request) {
@@ -36,5 +36,10 @@ public abstract class InstancePacket implements Serializable
 	public String getInstanceIdentifier()
 	{
 		return this.instanceIdentifier;
+	}
+	
+	public static String getInstanceIdentifier(Class<?> type, String identifier)
+	{
+		return type.getCanonicalName() + "#" + identifier;
 	}
 }

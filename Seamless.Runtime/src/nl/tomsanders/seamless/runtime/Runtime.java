@@ -22,8 +22,6 @@ import nl.tomsanders.seamless.util.Observable;
  */
 public class Runtime 
 {
-	private static InstancePacketConnection instanceServerConnection;
-	
 	public synchronized static <T extends Observable<T> & Serializable> Reference<T> getInstance(Class<T> type)
 	{
 		return Runtime.getInstance(type, new DefaultInstanceFactory<T>(type));
@@ -35,7 +33,7 @@ public class Runtime
 		try
 		{
 			Log.v("Initializing connection with instance server");
-			instanceServerConnection = new InstancePacketConnection(new Socket(
+			InstancePacketConnection instanceServerConnection = new InstancePacketConnection(new Socket(
 					NetworkConfiguration.LOCAL_HOST, 
 					NetworkConfiguration.INSTANCESERVER_LOCAL_PORT));
 			
@@ -71,53 +69,11 @@ public class Runtime
 				throw new RuntimeException("Invalid response from instance server");
 			}
 			
-			// Create reference
-			Reference<T> reference = new Reference<T>(instance);
-			// Start monitoring the instance
-			new InstanceObserver<T>(reference, type);
-			
-			// Keep listening for future updates from instance server
-			instanceServerConnection.receiveAsync(new InstanceManagerPacketReceiver<T>(reference), true);
-			
-			return reference;
+			return new Reference<T>(instance, instanceServerConnection);
 		} 
 		catch (Exception ex) 
 		{
 			throw new RuntimeException("Failed to retrieve instance", ex);
-		}
-	}
-	
-	public synchronized static <T extends Observable<T> & Serializable> void updateInstance(Class<? extends T> type, T instance)
-	{
-		try
-		{
-			InstanceSyncPacket syncPacket = new InstanceSyncPacket(instance);
-			if (instanceServerConnection != null)
-			{
-				instanceServerConnection.send(syncPacket);
-			}
-			else
-			{
-				throw new IllegalStateException("Connection with the instance server hasn't been initialized");
-			}
-		} 
-		catch (IOException ex) 
-		{
-			throw new RuntimeException("Failed to update instance", ex);
-		}
-	}
-	
-	public synchronized static void exit()
-	{
-		if (instanceServerConnection != null)
-		{
-			try
-			{
-				instanceServerConnection.close();
-			}
-			catch (IOException e)
-			{
-			}
 		}
 	}
 }
