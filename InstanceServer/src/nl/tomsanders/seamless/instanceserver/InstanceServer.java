@@ -1,6 +1,12 @@
 package nl.tomsanders.seamless.instanceserver;
 
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.net.InetAddress;
 import java.net.InetSocketAddress;
 import java.net.Socket;
@@ -42,8 +48,46 @@ public class InstanceServer
 		this.localConnections = new ArrayList<InstancePacketConnection>();
 		
 		this.instances = new Hashtable<String, InstanceSyncPacket>();
+		this.loadInstances();
+	}
+
+	@SuppressWarnings("unchecked")
+	private void loadInstances()
+	{
+		boolean loaded = false;
+		if (new File("instances").isFile())
+		{
+			try (ObjectInputStream input = new ObjectInputStream(new FileInputStream("instances")))
+			{
+				this.instances = (Hashtable<String, InstanceSyncPacket>)input.readObject();
+				loaded = true;
+			}
+			catch (IOException | ClassNotFoundException e)
+			{
+				Log.e("Failed to load instances from disk: " + e.getMessage());
+			}
+		}
+		
+		if (!loaded)
+		{
+			Log.v("Creating new instance file on disk");
+			this.instances = new Hashtable<String, InstanceSyncPacket>();
+			this.saveInstances();
+		}
 	}
 	
+	private void saveInstances()
+	{
+		try (ObjectOutputStream output = new ObjectOutputStream(new FileOutputStream("instances", false)))
+		{
+			output.writeObject(this.instances);
+		}
+		catch (IOException e)
+		{
+			Log.e("Unable to write instances to disk: " + e.getMessage());
+		}
+	}
+
 	public void start() throws IOException
 	{
 		// Start listening for local connections
@@ -162,6 +206,7 @@ public class InstanceServer
 			
 			this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
 			this.updateConnections(this.remoteConnections, syncPacket);
+			this.saveInstances();
 		}
 		else
 		{
@@ -193,6 +238,7 @@ public class InstanceServer
 			this.instances.put(syncPacket.getInstanceIdentifier(), syncPacket);
 			
 			this.updateConnections(this.localConnections, syncPacket);
+			this.saveInstances();
 			//this.updateConnections(remoteConnections.filter(
 			//		c -> c != connection, packet); // act as hub?
 		}
