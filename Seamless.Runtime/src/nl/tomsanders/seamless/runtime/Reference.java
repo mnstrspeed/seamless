@@ -11,25 +11,43 @@ import nl.tomsanders.seamless.networking.InstancePacketType;
 import nl.tomsanders.seamless.networking.InstanceSyncPacket;
 import nl.tomsanders.seamless.networking.ObjectConnection;
 import nl.tomsanders.seamless.networking.ObjectConnection.ObjectReceiver;
+import nl.tomsanders.seamless.util.Mergable;
 import nl.tomsanders.seamless.util.Observable;
 import nl.tomsanders.seamless.util.Observer;
 
-public class Reference<T extends Observable<T> & Serializable> 
+/**
+ * Reference to a shared instance. The Reference will ensure the
+ * shared instance will remain synchronized across the network by
+ * observing the instance through the Observer interface and
+ * updating the reference when it is changed on another host.
+ */
+public class Reference<T extends Observable<T> & Mergable<T> & Serializable> 
 		extends Observable<Reference<T>> implements Observer<T>, Closeable, ObjectReceiver<InstancePacket>
 {
 	private T instance;
 	private String instanceIdentifier;
 	private InstancePacketConnection connection;
 	
-	public Reference(T instance, InstancePacketConnection connection) throws IOException
+	/**
+	 * Create a reference to a shared instance after it is initialized by
+	 * the Runtime
+	 */
+	public Reference(T instance, String instanceIdentifier, InstancePacketConnection connection) throws IOException
 	{
-		this.instanceIdentifier = instance.getClass().getCanonicalName();
+		this.instanceIdentifier = instanceIdentifier;
+		
 		this.connection = connection;
 		this.connection.receiveAsync(this, true);
 			
-		this.set(instance);
+		this.updateReference(instance);
 	}
 	
+	/**
+	 * Get the current version of the shared instance. Note that the Object
+	 * only reflects the current state, and will be out of sync as soon as
+	 * a newer version is received. Therefore, it is important to always store
+	 * the Reference instead of the instance obtained with this method.
+	 */
 	public T get()
 	{
 		if (this.connection.isAvailable())
@@ -42,7 +60,24 @@ public class Reference<T extends Observable<T> & Serializable>
 		}
 	}
 	
+	
+	/**
+	 * Set a new version of the shared instance. This update will be synchronized
+	 * with other hosts.
+	 */
 	public void set(T instance)
+	{
+		this.updateReference(instance);
+		
+		this.setChanged();
+		this.notifyObservers(this);
+	}
+	
+	/**
+	 * Update the instance reference. This method ensures that all observer connections
+	 * are updated appropriately.
+	 */
+	private void updateReference(T instance)
 	{
 		if (this.instance != null)
 		{
@@ -50,14 +85,13 @@ public class Reference<T extends Observable<T> & Serializable>
 		}
 		this.instance = instance;
 		this.instance.addObserver(this);
-		
-		this.setChanged();
-		this.notifyObservers(this);
 	}
 
 	@Override
 	public void notify(Observable<T> observable, T data)
 	{
+		// Called whenever the instance has been updated, 
+		// send a new version to the InstanceServer
 		if (this.connection.isAvailable())
 		{
 			try
@@ -86,8 +120,11 @@ public class Reference<T extends Observable<T> & Serializable>
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
 			try 
 			{
-				T instance = (T)syncPacket.getInstance().getObject();
-				this.set(instance);
+				T update = (T)syncPacket.getInstance().getObject();
+				
+				// Merge the current instance with the updated instance
+				T instance = this.instance.merge(update);
+				this.updateReference(instance);
 			} 
 			catch (Exception ex)
 			{
@@ -96,6 +133,10 @@ public class Reference<T extends Observable<T> & Serializable>
 		}
 	}
 	
+	/**
+	 * Releases all connections and their associated threads made by
+	 * this Reference. This will ensure that the program can terminate.
+	 */
 	@Override
 	public void close() throws IOException
 	{
