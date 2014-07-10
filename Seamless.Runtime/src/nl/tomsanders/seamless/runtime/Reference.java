@@ -68,9 +68,6 @@ public class Reference<T extends Observable<T> & Mergable<T> & Serializable>
 	public void set(T instance)
 	{
 		this.updateReference(instance);
-		
-		this.setChanged();
-		this.notifyObservers(instance);
 	}
 	
 	/**
@@ -85,6 +82,9 @@ public class Reference<T extends Observable<T> & Mergable<T> & Serializable>
 		}
 		this.instance = instance;
 		this.instance.addObserver(this);
+		
+		this.setChanged();
+		this.notifyObservers(instance);
 	}
 
 	@Override
