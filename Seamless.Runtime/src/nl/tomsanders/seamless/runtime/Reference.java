@@ -22,7 +22,7 @@ import nl.tomsanders.seamless.util.Observer;
  * updating the reference when it is changed on another host.
  */
 public class Reference<T extends Observable<T> & Mergable<T> & Serializable> 
-		extends Observable<Reference<T>> implements Observer<T>, Closeable, ObjectReceiver<InstancePacket>
+		extends Observable<T> implements Observer<T>, Closeable, ObjectReceiver<InstancePacket>
 {
 	private T instance;
 	private String instanceIdentifier;
@@ -70,7 +70,7 @@ public class Reference<T extends Observable<T> & Mergable<T> & Serializable>
 		this.updateReference(instance);
 		
 		this.setChanged();
-		this.notifyObservers(this);
+		this.notifyObservers(instance);
 	}
 	
 	/**
@@ -107,6 +107,9 @@ public class Reference<T extends Observable<T> & Mergable<T> & Serializable>
 		{
 			throw new IllegalStateException("Instance out of sync: unable to push update to instance server");
 		}
+		
+		this.setChanged();
+		this.notifyObservers(instance);
 	}
 
 	@Override
