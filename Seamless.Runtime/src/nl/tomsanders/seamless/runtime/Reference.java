@@ -117,7 +117,7 @@ public class Reference<T extends Observable<T> & Mergable<T> & Serializable>
 	public void receivePacket(InstancePacket packet, ObjectConnection<InstancePacket> connection) throws IOException
 	{
 		if (packet.getPacketType() == InstancePacketType.INSTANCE_SYNC && 
-				packet.getInstanceIdentifier() == this.instanceIdentifier)
+				packet.getInstanceIdentifier().equals(this.instanceIdentifier))
 		{
 			Log.v("Received instance update for " + packet.getInstanceIdentifier() + " from instance server");
 			InstanceSyncPacket syncPacket = (InstanceSyncPacket)packet;
