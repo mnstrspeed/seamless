@@ -16,30 +16,8 @@ Installation
 * ``git clone https://github.com/mnstrspeed/seamless.git``
 * ``mkdir /opt/seamless``
 * ``ln -s seamless/bin/instanceserver*.jar /opt/seamless/instanceserver.jar``
-* ``ln -s seamless/bin/packagemanager*.jar /opt/seamless/packagemanager.jar``
-* ``mkdir /opt/seamless/packages``
 
-/etc/systemd/system/packagemanager.service
-```
-[Unit]
-Name=packagemanager
-Description=Seamless Package Manager Service
-After=network.target
-
-[Service]
-Type=simple
-User=root
-StandardOutput=journal
-StandardError=journal
-WorkingDirectory=/opt/seamless
-Environment=CLASSPATH=/opt/seamless/packagemanager.jar
-ExecStart=/usr/bin/java nl.tomsanders.seamless.packagemanager.Launcher start -verbose
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-```
+### systemd
 /etc/systemd/system/instanceserver.service
 ```
 [Unit]
@@ -63,5 +41,17 @@ WantedBy=multi-user.target
 ```
 
 * ``systemctl enable instanceserver``
-* ``systemctl enable packagemanager``
 * ``reboot``
+
+### Upstart
+/etc/init/instanceserver.conf
+```
+start on startup
+
+script
+	chdir /opt/seamless
+	exec /usr/bin/java -cp instanceserver.jar nl.tomsanders.seamless.instanceserver.Launcher >> /var/log/instanceserver.sys.log
+end script
+```
+
+``initctl start instanceserver``
