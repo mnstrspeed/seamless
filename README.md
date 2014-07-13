@@ -55,3 +55,9 @@ end script
 ```
 
 ``initctl start instanceserver``
+
+### Windows
+Download the Apache Commons Daemon binaries and run the JAR as a service:
+```
+./prunsrv.exe //IS//InstanceServer ...
+```
