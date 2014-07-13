@@ -6,6 +6,8 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.net.Socket;
+import java.util.ArrayList;
+import java.util.List;
 
 import nl.tomsanders.seamless.logging.Log;
 
@@ -24,6 +26,8 @@ public class ObjectConnection<T extends Serializable> implements Closeable
 	private Thread asyncThread;
 	private boolean available;
 	
+	private List<ObjectReceiver<T>> receivers;
+	
 	public ObjectConnection(Socket socket) throws IOException
 	{
 		this.connection = socket;
@@ -31,7 +35,31 @@ public class ObjectConnection<T extends Serializable> implements Closeable
 		this.inputStream = new ObjectInputStream(this.connection.getInputStream()); 
 		// Blocked until remote ObjectOutputStream is initialized
 		
+		this.receivers = new ArrayList<ObjectReceiver<T>>();
 		this.available = true;
+	}
+	
+	public void addReceiver(ObjectReceiver<T> receiver)
+	{
+		this.receivers.add(receiver);
+	}
+	
+	public void deleteReceiver(ObjectReceiver<T> receiver)
+	{
+		this.receivers.remove(receiver);
+		if (this.isReceivingAsync && this.receivers.isEmpty())
+		{
+			this.asyncThread.interrupt();
+			try
+			{
+				this.close();
+			}
+			catch (IOException ex)
+			{
+				// "if an I/O error occurs when closing this socket."
+				// Nothing we can do about this
+			}
+		}
 	}
 	
 	public void send(T packet) throws IOException
@@ -72,10 +100,24 @@ public class ObjectConnection<T extends Serializable> implements Closeable
 	
 	public void receiveAsync(ObjectReceiver<T> receiver, boolean repeat) throws IOException
 	{
+		this.receivers.add(receiver);
+		this.receiveAsync(repeat);
+	}
+	
+	public void receiveAsync(boolean repeat) throws IOException
+	{
 		this.isReceivingAsync = true;
 		
-		this.asyncThread = new Thread(new AsyncReceiver(this.inputStream, receiver, repeat));
+		this.asyncThread = new Thread(new AsyncReceiver(this.inputStream, this::receivePacket, repeat));
 		this.asyncThread.start();
+	}
+	
+	public void receivePacket(T packet, ObjectConnection<T> connection) throws IOException
+	{
+		for (ObjectReceiver<T> receiver : this.receivers)
+		{
+			receiver.receivePacket(packet, connection);
+		}
 	}
 	
 	public void close() throws IOException
@@ -124,7 +166,7 @@ public class ObjectConnection<T extends Serializable> implements Closeable
 			} 
 			catch (IOException e)
 			{
-				Log.e("Connection to " + connection.getInetAddress() + " interrupted");
+				Log.v("Connection to " + connection.getInetAddress() + " interrupted");
 			}
 			catch (ClassNotFoundException e)
 			{
