@@ -59,5 +59,13 @@ end script
 ### Windows
 Download the Apache Commons Daemon binaries and run the JAR as a service:
 ```
-./prunsrv.exe //IS//InstanceServer ...
+prunsrv.exe //IS//InstanceServer ^
+	--DisplayName="InstanceServer" ^
+	--Startup=auto ^
+	++DependsOn="Tcpip;Dhcp;Dnscache" ^
+	--Install="C:\Program Files\Seamless\prunsrv.exe" ^
+	--JavaHome="C:\Program Files\Java\jre8" ^
+	--StartMode=Java ^
+	--Classpath="C:\Program Files\Seamless\instanceserver.jar" ^
+	--StartClass=nl.tomsanders.seamless.instanceserver.Launcher
 ```
